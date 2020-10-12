@@ -1,8 +1,13 @@
 module.exports = {
   root: true,
   env: {
-    node: true
+    node: true,
+    mocha: true,
+    'truffle/globals': true
   },
+  plugins: [
+    'truffle'
+  ],
   extends: [
     'plugin:vue/essential',
     '@vue/standard'
