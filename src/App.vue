@@ -1,32 +1,70 @@
 <template>
   <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </div>
-    <router-view/>
+    <md-app md-mode="fixed">
+      <md-app-toolbar class="md-primary">
+        <md-button class="md-icon-button" @click="menuVisible = !menuVisible">
+          <md-icon>menu</md-icon>
+        </md-button>
+        <span class="md-title">{{ title }}</span>
+      </md-app-toolbar>
+
+      <md-app-drawer :md-active.sync="menuVisible">
+        <md-list>
+          <md-list-item to="/" exact>
+            <md-icon>home</md-icon>
+            <span class="md-list-item-text">Home</span>
+          </md-list-item>
+          <md-list-item to="/about" exact>
+            <md-icon>info</md-icon>
+            <span class="md-list-item-text">About</span>
+          </md-list-item>
+        </md-list>
+      </md-app-drawer>
+
+      <md-app-content>
+        <router-view @set-page-name="setPageName"/>
+      </md-app-content>
+    </md-app>
   </div>
 </template>
 
+<script>
+export default {
+  name: 'App',
+  data () {
+    return {
+      menuVisible: false,
+      pageName: ''
+    }
+  },
+  computed: {
+    title () {
+      if (!this.pageName) return 'DecentCoder'
+
+      return 'DecentCoder - ' + this.pageName
+    }
+  },
+  mounted () {
+    this.initialize()
+  },
+  watch: {
+    $route () {
+      this.initialize()
+    }
+  },
+  methods: {
+    initialize () {
+      this.setPageName(this.$route.name)
+    },
+    setPageName (pageName) {
+      this.pageName = pageName
+    }
+  }
+}
+</script>
+
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
-
-#nav {
-  padding: 30px;
-}
-
-#nav a {
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-#nav a.router-link-exact-active {
-  color: #42b983;
+.md-app {
+   height: 100vh;
 }
 </style>
