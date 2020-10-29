@@ -2,6 +2,7 @@ import Vue from 'vue'
 import App from './App.vue'
 import VueWeb3 from './plugins/vue-web3'
 import VueTruffleContract from './plugins/vue-truffle-contract'
+import VueIPFS from './plugins/vue-ipfs'
 import VueMaterial from 'vue-material'
 import 'vue-material/dist/vue-material.min.css'
 import 'vue-material/dist/theme/default.css'
@@ -10,6 +11,7 @@ import router from './router'
 
 Vue.use(VueWeb3)
 Vue.use(VueTruffleContract)
+Vue.use(VueIPFS)
 Vue.use(VueMaterial)
 
 Vue.config.productionTip = false
