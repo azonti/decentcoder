@@ -28,7 +28,6 @@ contract ContestsManager {
     uint submissionPeriodFinish,
     uint claimPeriodFinish,
     string memory descriptionCIDPath,
-    string memory isubmissionSolCIDPath,
     string memory presubmissionTesterCCCIDPath,
     bytes32 postclaimTesterCCHash
   ) external payable {
@@ -40,7 +39,6 @@ contract ContestsManager {
       submissionPeriodFinish,
       claimPeriodFinish,
       descriptionCIDPath,
-      isubmissionSolCIDPath,
       presubmissionTesterCCCIDPath,
       postclaimTesterCCHash
     );

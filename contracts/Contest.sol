@@ -3,6 +3,7 @@ pragma solidity ^0.7.3;
 
 import "./ContestsManager.sol";
 import "./ITester.sol";
+import "./ISubmission.sol";
 
 contract Contest {
   modifier onlyBy(address a) {
@@ -75,9 +76,6 @@ contract Contest {
   string public descriptionCIDPath;
   string public descriptionPassphrase;
 
-  string public isubmissionSolCIDPath;
-  string public isubmissionSolPassphrase;
-
   string public presubmissionTesterCCCIDPath;
   string public presubmissionTesterCCPassphrase;
 
@@ -98,7 +96,6 @@ contract Contest {
     uint _submissionPeriodFinish,
     uint _claimPeriodFinish,
     string memory _descriptionCIDPath,
-    string memory _isubmissionSolCIDPath,
     string memory _presubmissionTesterCCCIDPath,
     bytes32 _postclaimTesterCCHash
   ) payable {
@@ -120,8 +117,6 @@ contract Contest {
 
     descriptionCIDPath = _descriptionCIDPath;
 
-    isubmissionSolCIDPath = _isubmissionSolCIDPath;
-
     presubmissionTesterCCCIDPath = _presubmissionTesterCCCIDPath;
 
     submissionTimestamp[_organizer] = type(uint).max;
@@ -133,7 +128,6 @@ contract Contest {
 
   function startSubmissionPeriod(
     string memory _descriptionPassphrase,
-    string memory _isubmissionSolCIDPassphrase,
     string memory _presubmissionTesterCCPassphrase
   )
   external
@@ -145,8 +139,6 @@ contract Contest {
     moveIntoNextPeriod();
 
     descriptionPassphrase = _descriptionPassphrase;
-
-    isubmissionSolPassphrase = _isubmissionSolCIDPassphrase;
 
     presubmissionTesterCCPassphrase = _presubmissionTesterCCPassphrase;
   }
@@ -187,7 +179,7 @@ contract Contest {
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
     require(keccak256(abi.encodePacked(submissionCC, msg.sender)) == submissionCCAddressHash[msg.sender], "The hashes do not match");
-    require(ITester(createContractByCC(postclaimTesterCC)).test(submissionCC), "Your submission is wrong");
+    require(ITester(createContractByCC(postclaimTesterCC)).test(ISubmission(createContractByCC(submissionCC))), "Your submission is wrong");
 
     winner = msg.sender;
     emit WinnerChanged();
