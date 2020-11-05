@@ -10,6 +10,7 @@
   "dependencies": {
     "@truffle/contract": "^4.2.25",
     "core-js": "^3.6.5",
+    "dayjs": "^1.9.5",
     "ipfs-http-client": "^48.0.0",
     "register-service-worker": "^1.7.1",
     "vue": "^2.6.11",
