@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import App from './App.vue'
+import VueDayJS from './plugins/vue-dayjs'
 import VueWeb3 from './plugins/vue-web3'
 import VueTruffleContract from './plugins/vue-truffle-contract'
 import VueIPFS from './plugins/vue-ipfs'
@@ -9,6 +10,7 @@ import 'vue-material/dist/theme/default.css'
 import './registerServiceWorker'
 import router from './router'
 
+Vue.use(VueDayJS)
 Vue.use(VueWeb3)
 Vue.use(VueTruffleContract)
 Vue.use(VueIPFS)
