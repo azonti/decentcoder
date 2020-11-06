@@ -65,7 +65,7 @@ contract Contest {
   string public name;
 
   address public immutable organizer;
-  uint public immutable organizersDeposit;
+  uint public immutable organizerDeposit;
 
   uint public immutable announcementPeriodFinish;
   uint public immutable submissionPeriodFinish;
@@ -89,7 +89,7 @@ contract Contest {
   constructor(
     string memory _name,
     address _organizer,
-    uint _organizersDeposit,
+    uint _organizerDeposit,
     uint _announcementPeriodFinish,
     uint _submissionPeriodFinish,
     uint _claimPeriodFinish,
@@ -97,7 +97,7 @@ contract Contest {
     string memory _encryptedPresubmissionTesterCCCIDPath,
     bytes32 _postclaimTesterCCHash
   ) payable {
-    require(_organizersDeposit <= msg.value, "The organizer's deposit is invalid");
+    require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
 
     require(_announcementPeriodFinish + timedrift <= _submissionPeriodFinish, "The submission period is too short");
     require(_submissionPeriodFinish + timedrift <= _claimPeriodFinish, "The claim period is too short");
@@ -107,7 +107,7 @@ contract Contest {
     name = _name;
 
     organizer = _organizer;
-    organizersDeposit = _organizersDeposit;
+    organizerDeposit = _organizerDeposit;
 
     announcementPeriodFinish = _announcementPeriodFinish;
     submissionPeriodFinish = _submissionPeriodFinish;
@@ -186,7 +186,7 @@ contract Contest {
   {
     contestsManager.removeMe();
 
-    payable(organizer).transfer(organizersDeposit);
+    payable(organizer).transfer(organizerDeposit);
 
     selfdestruct(payable(winner));
   }
@@ -207,7 +207,7 @@ contract Contest {
 
     contestsManager.removeMe();
 
-    msg.sender.transfer(organizersDeposit);
+    msg.sender.transfer(organizerDeposit);
 
     selfdestruct(payable(winner));
   }

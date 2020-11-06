@@ -23,7 +23,7 @@ contract ContestsManager {
 
   function createAndPushNewContest(
     string memory name,
-    uint organizersDeposit,
+    uint organizerDeposit,
     uint announcementPeriodFinish,
     uint submissionPeriodFinish,
     uint claimPeriodFinish,
@@ -34,7 +34,7 @@ contract ContestsManager {
     Contest newContest = new Contest{value: msg.value}(
       name,
       msg.sender,
-      organizersDeposit,
+      organizerDeposit,
       announcementPeriodFinish,
       submissionPeriodFinish,
       claimPeriodFinish,
