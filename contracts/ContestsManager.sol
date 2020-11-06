@@ -27,8 +27,8 @@ contract ContestsManager {
     uint announcementPeriodFinish,
     uint submissionPeriodFinish,
     uint claimPeriodFinish,
-    string memory descriptionCIDPath,
-    string memory presubmissionTesterCCCIDPath,
+    string memory encryptedDescriptionCIDPath,
+    string memory encryptedPresubmissionTesterCCCIDPath,
     bytes32 postclaimTesterCCHash
   ) external payable {
     Contest newContest = new Contest{value: msg.value}(
@@ -38,8 +38,8 @@ contract ContestsManager {
       announcementPeriodFinish,
       submissionPeriodFinish,
       claimPeriodFinish,
-      descriptionCIDPath,
-      presubmissionTesterCCCIDPath,
+      encryptedDescriptionCIDPath,
+      encryptedPresubmissionTesterCCCIDPath,
       postclaimTesterCCHash
     );
 

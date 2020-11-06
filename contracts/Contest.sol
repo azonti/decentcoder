@@ -73,11 +73,9 @@ contract Contest {
 
   uint public constant timedrift = 10 minutes;
 
-  string public descriptionCIDPath;
-  string public descriptionPassphrase;
-
-  string public presubmissionTesterCCCIDPath;
-  string public presubmissionTesterCCPassphrase;
+  string public encryptedDescriptionCIDPath;
+  string public encryptedPresubmissionTesterCCCIDPath;
+  string public passphrase;
 
   mapping(address => uint) public submissionTimestamp;
   mapping(address => bytes32) private submissionCCAddressHash;
@@ -95,8 +93,8 @@ contract Contest {
     uint _announcementPeriodFinish,
     uint _submissionPeriodFinish,
     uint _claimPeriodFinish,
-    string memory _descriptionCIDPath,
-    string memory _presubmissionTesterCCCIDPath,
+    string memory _encryptedDescriptionCIDPath,
+    string memory _encryptedPresubmissionTesterCCCIDPath,
     bytes32 _postclaimTesterCCHash
   ) payable {
     require(_organizersDeposit <= msg.value, "The organizer's deposit is invalid");
@@ -115,9 +113,8 @@ contract Contest {
     submissionPeriodFinish = _submissionPeriodFinish;
     claimPeriodFinish = _claimPeriodFinish;
 
-    descriptionCIDPath = _descriptionCIDPath;
-
-    presubmissionTesterCCCIDPath = _presubmissionTesterCCCIDPath;
+    encryptedDescriptionCIDPath = _encryptedDescriptionCIDPath;
+    encryptedPresubmissionTesterCCCIDPath = _encryptedPresubmissionTesterCCCIDPath;
 
     submissionTimestamp[_organizer] = type(uint).max;
 
@@ -127,8 +124,7 @@ contract Contest {
   }
 
   function startSubmissionPeriod(
-    string memory _descriptionPassphrase,
-    string memory _presubmissionTesterCCPassphrase
+    string memory _passphrase
   )
   external
   onlyBy(organizer)
@@ -138,9 +134,7 @@ contract Contest {
   {
     moveIntoNextPeriod();
 
-    descriptionPassphrase = _descriptionPassphrase;
-
-    presubmissionTesterCCPassphrase = _presubmissionTesterCCPassphrase;
+    passphrase = _passphrase;
   }
 
   function submit(
