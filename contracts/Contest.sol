@@ -21,7 +21,7 @@ contract Contest {
   }
 
   Period public period = Period.Announcement;
-  event PeriodChanged();
+  event PeriodChanged(Period period);
 
   modifier onlyDuring(Period p) {
     require(period == p, "Too early or late to call this function");
@@ -30,7 +30,7 @@ contract Contest {
 
   function moveIntoNextPeriod() internal {
     period = Period(uint(period) + 1);
-    emit PeriodChanged();
+    emit PeriodChanged(period);
   }
 
 
@@ -84,7 +84,7 @@ contract Contest {
   bytes private postclaimTesterCC;
 
   address public winner;
-  event WinnerChanged();
+  event WinnerChanged(address winner);
 
   constructor(
     string memory _name,
@@ -176,7 +176,7 @@ contract Contest {
     require(ITester(createContractByCC(postclaimTesterCC)).test(ISubmission(createContractByCC(submissionCC))), "Your submission is wrong");
 
     winner = msg.sender;
-    emit WinnerChanged();
+    emit WinnerChanged(winner);
   }
 
   function terminateNormally()
