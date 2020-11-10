@@ -9,14 +9,13 @@ contract ContestsManager {
   mapping(Contest => Contest) private prevContest;
   mapping(Contest => Contest) private nextContest;
   Contest private tailContest;
+  event ContestsChanged();
 
-  event ContestsUpdated();
-
-  function getContests() external view returns (Contest[] memory contests) {
-    contests = new Contest[](nContests);
+  function contests() external view returns (Contest[] memory _contests) {
+    _contests = new Contest[](nContests);
     Contest contest = nextContest[Contest(0)];
     for (uint i = 0; i < nContests; i++) {
-      contests[i] = contest;
+      _contests[i] = contest;
       contest = nextContest[contest];
     }
   }
@@ -49,7 +48,7 @@ contract ContestsManager {
     nextContest[tailContest] = newContest;
     tailContest = newContest;
 
-    emit ContestsUpdated();
+    emit ContestsChanged();
   }
 
   function removeMe() external {
@@ -66,6 +65,6 @@ contract ContestsManager {
     delete prevContest[Contest(msg.sender)];
     delete nextContest[Contest(msg.sender)];
 
-    emit ContestsUpdated();
+    emit ContestsChanged();
   }
 }
