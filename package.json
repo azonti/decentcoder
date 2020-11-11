@@ -8,10 +8,13 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@ethereumjs/tx": "^3.0.0-beta.1",
+    "@ethereumjs/vm": "^5.0.0-beta.1",
     "@truffle/contract": "^4.2.25",
     "core-js": "^3.6.5",
     "crypto-js": "^4.0.0",
     "dayjs": "^1.9.5",
+    "ethereumjs-util": "^7.0.7",
     "ipfs-http-client": "^48.0.0",
     "raw-loader": "^4.0.2",
     "register-service-worker": "^1.7.1",
