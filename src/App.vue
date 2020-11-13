@@ -18,6 +18,10 @@
             <md-icon>info</md-icon>
             <span class="md-list-item-text">About</span>
           </md-list-item>
+          <md-list-item to="/contests" exact>
+            <md-icon>cake</md-icon>
+            <span class="md-list-item-text">Contests</span>
+          </md-list-item>
         </md-list>
       </md-app-drawer>
 
