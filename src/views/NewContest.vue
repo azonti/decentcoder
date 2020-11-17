@@ -13,16 +13,16 @@
       <md-input type="number" step="0.000000000000000001" required v-model="prizeEther"/>
     </md-field>
     <md-field>
-      <label>Announcement Period Finish</label>
-      <md-input type="datetime-local" required v-model="announcementPeriodFinishDTL"/>
+      <label>Announcement Period Finished at</label>
+      <md-input type="datetime-local" required v-model="announcementPeriodFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Submission Period Finish</label>
-      <md-input type="datetime-local" required v-model="submissionPeriodFinishDTL"/>
+      <label>Submission Period Finished at</label>
+      <md-input type="datetime-local" required v-model="submissionPeriodFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Claim Period Finish</label>
-      <md-input type="datetime-local" required v-model="claimPeriodFinishDTL"/>
+      <label>Claim Period Finished at</label>
+      <md-input type="datetime-local" required v-model="claimPeriodFinishedAtDTL"/>
     </md-field>
     <md-field>
       <label>Description</label>
@@ -53,9 +53,9 @@ export default {
       name: '',
       organizerDepositEther: '',
       prizeEther: '',
-      announcementPeriodFinishDTL: '',
-      submissionPeriodFinishDTL: '',
-      claimPeriodFinishDTL: '',
+      announcementPeriodFinishedAtDTL: '',
+      submissionPeriodFinishedAtDTL: '',
+      claimPeriodFinishedAtDTL: '',
       description: '',
       passphrase: '',
       creating: false
@@ -82,9 +82,9 @@ export default {
       await this.contestsManager.createAndPushNewContest(
         this.name,
         this.$web3.utils.toWei(this.organizerDepositEther),
-        this.$dayjs(this.announcementPeriodFinishDTL).unix(),
-        this.$dayjs(this.submissionPeriodFinishDTL).unix(),
-        this.$dayjs(this.claimPeriodFinishDTL).unix(),
+        this.$dayjs(this.announcementPeriodFinishedAtDTL).unix(),
+        this.$dayjs(this.submissionPeriodFinishedAtDTL).unix(),
+        this.$dayjs(this.claimPeriodFinishedAtDTL).unix(),
         encryptedDescriptionCIDPath,
         encryptedPresubmissionTesterCCCIDPath,
         postclaimTesterCCHash,

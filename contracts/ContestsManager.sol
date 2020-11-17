@@ -23,9 +23,9 @@ contract ContestsManager {
   function createAndPushNewContest(
     string memory name,
     uint organizerDeposit,
-    uint announcementPeriodFinish,
-    uint submissionPeriodFinish,
-    uint claimPeriodFinish,
+    uint announcementPeriodFinishedAt,
+    uint submissionPeriodFinishedAt,
+    uint claimPeriodFinishedAt,
     string memory encryptedDescriptionCIDPath,
     string memory encryptedPresubmissionTesterCCCIDPath,
     bytes32 postclaimTesterCCHash
@@ -34,9 +34,9 @@ contract ContestsManager {
       name,
       msg.sender,
       organizerDeposit,
-      announcementPeriodFinish,
-      submissionPeriodFinish,
-      claimPeriodFinish,
+      announcementPeriodFinishedAt,
+      submissionPeriodFinishedAt,
+      claimPeriodFinishedAt,
       encryptedDescriptionCIDPath,
       encryptedPresubmissionTesterCCCIDPath,
       postclaimTesterCCHash

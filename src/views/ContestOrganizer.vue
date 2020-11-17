@@ -32,9 +32,9 @@ export default {
       contest: null,
       blockTimestamp: 0,
       period: null,
-      announcementPeriodFinish: null,
-      submissionPeriodFinish: null,
-      claimPeriodFinish: null,
+      announcementPeriodFinishedAt: null,
+      submissionPeriodFinishedAt: null,
+      claimPeriodFinishedAt: null,
       timedrift: null,
       passphrase: '',
       startingSubmissionPeriod: false,
@@ -46,23 +46,23 @@ export default {
       if (
         !this.blockTimestamp ||
         !this.period ||
-        !this.announcementPeriodFinish ||
-        !this.submissionPeriodFinish ||
-        !this.claimPeriodFinish ||
+        !this.announcementPeriodFinishedAt ||
+        !this.submissionPeriodFinishedAt ||
+        !this.claimPeriodFinishedAt ||
         !this.timedrift
       ) return ''
 
       if (this.period.eq(this.$web3.utils.toBN(0))) {
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinish)) return 'announcement'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinish.add(this.timedrift))) return 'betweenAnnouncementAndSubmission'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinishedAt)) return 'announcement'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinishedAt.add(this.timedrift))) return 'betweenAnnouncementAndSubmission'
         return 'abnormalTermination'
       }
       if (this.period.eq(this.$web3.utils.toBN(1))) {
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinish)) return 'submission'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinish.add(this.timedrift))) return 'betweenSubmissionAndClaim'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinishedAt)) return 'submission'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndClaim'
         return 'abnormalTermination'
       }
-      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPeriodFinish)) return 'claim'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPeriodFinishedAt)) return 'claim'
       return 'normalTermination'
     }
   },
@@ -85,9 +85,9 @@ export default {
         this.contest.name().then(this.setPageName),
         this.$web3.eth.getBlock('latest').then(this.setBlockTimestamp),
         this.contest.period().then(this.setPeriod),
-        this.contest.announcementPeriodFinish().then(this.setAnnouncementPeriodFinish),
-        this.contest.submissionPeriodFinish().then(this.setSubmissionPeriodFinish),
-        this.contest.claimPeriodFinish().then(this.setClaimPeriodFinish),
+        this.contest.announcementPeriodFinishedAt().then(this.setAnnouncementPeriodFinishedAt),
+        this.contest.submissionPeriodFinishedAt().then(this.setSubmissionPeriodFinishedAt),
+        this.contest.claimPeriodFinishedAt().then(this.setClaimPeriodFinishedAt),
         this.contest.timedrift().then(this.setTimedrift)
       ])
     },
@@ -104,14 +104,14 @@ export default {
         this.period = this.$web3.utils.toBN(period)
       }
     },
-    setAnnouncementPeriodFinish (announcementPeriodFinish) {
-      this.announcementPeriodFinish = announcementPeriodFinish
+    setAnnouncementPeriodFinishedAt (announcementPeriodFinishedAt) {
+      this.announcementPeriodFinishedAt = announcementPeriodFinishedAt
     },
-    setSubmissionPeriodFinish (submissionPeriodFinish) {
-      this.submissionPeriodFinish = submissionPeriodFinish
+    setSubmissionPeriodFinishedAt (submissionPeriodFinishedAt) {
+      this.submissionPeriodFinishedAt = submissionPeriodFinishedAt
     },
-    setClaimPeriodFinish (claimPeriodFinish) {
-      this.claimPeriodFinish = claimPeriodFinish
+    setClaimPeriodFinishedAt (claimPeriodFinishedAt) {
+      this.claimPeriodFinishedAt = claimPeriodFinishedAt
     },
     setTimedrift (timedrift) {
       this.timedrift = timedrift

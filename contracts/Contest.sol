@@ -67,9 +67,9 @@ contract Contest {
   address public immutable organizer;
   uint public immutable organizerDeposit;
 
-  uint public immutable announcementPeriodFinish;
-  uint public immutable submissionPeriodFinish;
-  uint public immutable claimPeriodFinish;
+  uint public immutable announcementPeriodFinishedAt;
+  uint public immutable submissionPeriodFinishedAt;
+  uint public immutable claimPeriodFinishedAt;
 
   uint public constant timedrift = 10 minutes;
 
@@ -90,17 +90,17 @@ contract Contest {
     string memory _name,
     address _organizer,
     uint _organizerDeposit,
-    uint _announcementPeriodFinish,
-    uint _submissionPeriodFinish,
-    uint _claimPeriodFinish,
+    uint _announcementPeriodFinishedAt,
+    uint _submissionPeriodFinishedAt,
+    uint _claimPeriodFinishedAt,
     string memory _encryptedDescriptionCIDPath,
     string memory _encryptedPresubmissionTesterCCCIDPath,
     bytes32 _postclaimTesterCCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
 
-    require(_announcementPeriodFinish + timedrift <= _submissionPeriodFinish, "The submission period is too short");
-    require(_submissionPeriodFinish + timedrift <= _claimPeriodFinish, "The claim period is too short");
+    require(_announcementPeriodFinishedAt + timedrift <= _submissionPeriodFinishedAt, "The submission period is too short");
+    require(_submissionPeriodFinishedAt + timedrift <= _claimPeriodFinishedAt, "The claim period is too short");
 
     contestsManager = ContestsManager(msg.sender);
 
@@ -109,9 +109,9 @@ contract Contest {
     organizer = _organizer;
     organizerDeposit = _organizerDeposit;
 
-    announcementPeriodFinish = _announcementPeriodFinish;
-    submissionPeriodFinish = _submissionPeriodFinish;
-    claimPeriodFinish = _claimPeriodFinish;
+    announcementPeriodFinishedAt = _announcementPeriodFinishedAt;
+    submissionPeriodFinishedAt = _submissionPeriodFinishedAt;
+    claimPeriodFinishedAt = _claimPeriodFinishedAt;
 
     encryptedDescriptionCIDPath = _encryptedDescriptionCIDPath;
     encryptedPresubmissionTesterCCCIDPath = _encryptedPresubmissionTesterCCCIDPath;
@@ -129,8 +129,8 @@ contract Contest {
   external
   onlyBy(organizer)
   onlyDuring(Period.Announcement)
-  onlyAfter(announcementPeriodFinish)
-  onlyBefore(announcementPeriodFinish + timedrift)
+  onlyAfter(announcementPeriodFinishedAt)
+  onlyBefore(announcementPeriodFinishedAt + timedrift)
   {
     moveIntoNextPeriod();
 
@@ -142,7 +142,7 @@ contract Contest {
   )
   external
   onlyDuring(Period.Submission)
-  onlyBefore(submissionPeriodFinish)
+  onlyBefore(submissionPeriodFinishedAt)
   {
     submissionTimestamp[msg.sender] = block.timestamp;
     submissionCCAddressHash[msg.sender] = _submissionCCAddressHash;
@@ -154,8 +154,8 @@ contract Contest {
   external
   onlyBy(organizer)
   onlyDuring(Period.Submission)
-  onlyAfter(submissionPeriodFinish)
-  onlyBefore(submissionPeriodFinish + timedrift)
+  onlyAfter(submissionPeriodFinishedAt)
+  onlyBefore(submissionPeriodFinishedAt + timedrift)
   {
     require(keccak256(_postclaimTesterCC) == postclaimTesterCCHash, "The hashes do not match");
 
@@ -169,7 +169,7 @@ contract Contest {
   )
   external
   onlyDuring(Period.Claim)
-  onlyBefore(claimPeriodFinish)
+  onlyBefore(claimPeriodFinishedAt)
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
     require(keccak256(abi.encodePacked(submissionCC, msg.sender)) == submissionCCAddressHash[msg.sender], "The hashes do not match");
@@ -182,7 +182,7 @@ contract Contest {
   function terminateNormally()
   external
   onlyDuring(Period.Claim)
-  onlyAfter(claimPeriodFinish)
+  onlyAfter(claimPeriodFinishedAt)
   {
     contestsManager.removeMe();
 
@@ -196,10 +196,10 @@ contract Contest {
   {
     require(
       (
-        block.timestamp > announcementPeriodFinish + timedrift &&
+        block.timestamp > announcementPeriodFinishedAt + timedrift &&
         period == Period.Announcement
       ) || (
-        block.timestamp > submissionPeriodFinish + timedrift &&
+        block.timestamp > submissionPeriodFinishedAt + timedrift &&
         period == Period.Submission
       ),
       "The organizer is honest"
