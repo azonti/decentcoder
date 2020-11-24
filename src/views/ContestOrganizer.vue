@@ -31,6 +31,7 @@ export default {
     return {
       contest: null,
       blockTimestamp: 0,
+      createdBlockNumber: 0,
       period: null,
       announcementPeriodFinishedAt: null,
       submissionPeriodFinishedAt: null,
@@ -78,43 +79,63 @@ export default {
     async initialize () {
       this.contest = await this.$Contest.at(this.$route.params.address)
 
+      await this.setCreatedBlockNumber()
+
       this.$web3.eth.subscribe('newBlockHeaders').on('data', this.setBlockTimestamp)
-      this.contest.PeriodChanged().on('data', r => this.setPeriod(r.returnValues.period))
+      this.contest.PeriodChanged().on('data', event => this.setPeriod(event))
 
       await Promise.all([
-        this.contest.name().then(this.setPageName),
-        this.$web3.eth.getBlock('latest').then(this.setBlockTimestamp),
-        this.contest.period().then(this.setPeriod),
-        this.contest.announcementPeriodFinishedAt().then(this.setAnnouncementPeriodFinishedAt),
-        this.contest.submissionPeriodFinishedAt().then(this.setSubmissionPeriodFinishedAt),
-        this.contest.claimPeriodFinishedAt().then(this.setClaimPeriodFinishedAt),
-        this.contest.timedrift().then(this.setTimedrift)
+        this.setBlockTimestamp(),
+        this.setPeriod(),
+        this.setAnnouncementPeriodFinishedAt(),
+        this.setSubmissionPeriodFinishedAt(),
+        this.setClaimPeriodFinishedAt(),
+        this.setTimedrift(),
+        this.setPageName()
       ])
     },
-    setPageName (pageName) {
-      this.$emit('set-page-name', pageName + ' Organizer')
-    },
-    setBlockTimestamp (blockHeader) {
-      this.blockTimestamp = blockHeader.timestamp
-    },
-    async setPeriod (period) {
-      if (this.$web3.utils.isBN(period)) {
-        this.period = period
+    async setBlockTimestamp (blockHeader) {
+      if (blockHeader) {
+        this.blockTimestamp = blockHeader.timestamp
       } else {
-        this.period = this.$web3.utils.toBN(period)
+        const block = await this.$web3.eth.getBlock('latest')
+        this.blockTimestamp = block.timestamp
       }
     },
-    setAnnouncementPeriodFinishedAt (announcementPeriodFinishedAt) {
-      this.announcementPeriodFinishedAt = announcementPeriodFinishedAt
+    async setCreatedBlockNumber () {
+      this.createdBlockNumber = await this.contest.createdBlockNumber()
     },
-    setSubmissionPeriodFinishedAt (submissionPeriodFinishedAt) {
-      this.submissionPeriodFinishedAt = submissionPeriodFinishedAt
+    async setPeriod (event) {
+      if (event) {
+        this.period = this.$web3.utils.toBN(event.returnValues.period)
+      } else {
+        this.period = await this.contest.period()
+      }
     },
-    setClaimPeriodFinishedAt (claimPeriodFinishedAt) {
-      this.claimPeriodFinishedAt = claimPeriodFinishedAt
+    async setAnnouncementPeriodFinishedAt () {
+      this.announcementPeriodFinishedAt = await this.contest.announcementPeriodFinishedAt()
     },
-    setTimedrift (timedrift) {
-      this.timedrift = timedrift
+    async setSubmissionPeriodFinishedAt () {
+      this.submissionPeriodFinishedAt = await this.contest.submissionPeriodFinishedAt()
+    },
+    async setClaimPeriodFinishedAt () {
+      this.claimPeriodFinishedAt = await this.contest.claimPeriodFinishedAt()
+    },
+    async setTimedrift () {
+      this.timedrift = await this.contest.timedrift()
+    },
+    async setPageName () {
+      const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
+      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '0')[0].transactionHash)
+      const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
+      let name = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {
+        const newName = new Uint8Array(name.length + chunk.length)
+        newName.set(name)
+        newName.set(chunk, name.length)
+        name = newName
+      }
+      this.$emit('set-page-name', (new TextDecoder()).decode(name) + ' Organizer')
     },
     async startSubmissionPeriod () {
       this.startingSubmissionPeriod = true
@@ -127,11 +148,14 @@ export default {
     async startClaimPeriod () {
       this.startingClaimPeriod = true
 
-      const submissionJSON = await document.getElementById('postclaimTesterJSON').files[0].text()
-      const submissionCC = JSON.parse(submissionJSON).bytecode
-
       const accounts = await this.$web3.eth.getAccounts()
-      await this.contest.startClaimPeriod(submissionCC, { from: accounts[0] })
+
+      const postclaimTesterJSON = await document.getElementById('postclaimTesterJSON').files[0].text()
+      const PostclaimTester = this.$contract(JSON.parse(postclaimTesterJSON))
+      PostclaimTester.setProvider(this.$web3.currentProvider)
+      const postclaimTester = await PostclaimTester.new({ from: accounts[0] })
+
+      await this.contest.startClaimPeriod(postclaimTester.address, { from: accounts[0] })
 
       this.startingClaimPeriod = false
     }

@@ -6,6 +6,7 @@ import ISubmissionJSON from '@/../build/contracts/ISubmission.json'
 
 const plugin = {
   install (Vue) {
+    Vue.prototype.$contract = contract
     Vue.prototype.$ContestsManager = contract(ContestsManagerJSON)
     Vue.prototype.$ContestsManager.setProvider(Vue.prototype.$web3.currentProvider)
     Vue.prototype.$Contest = contract(ContestJSON)

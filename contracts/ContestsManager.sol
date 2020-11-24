@@ -9,7 +9,7 @@ contract ContestsManager {
   mapping(Contest => Contest) private prevContest;
   mapping(Contest => Contest) private nextContest;
   Contest private tailContest;
-  event ContestsChanged();
+  event ContestsChanged(Contest contest);
 
   function contests() external view returns (Contest[] memory _contests) {
     _contests = new Contest[](nContests);
@@ -21,25 +21,22 @@ contract ContestsManager {
   }
 
   function createAndPushNewContest(
-    string memory name,
     uint organizerDeposit,
     uint announcementPeriodFinishedAt,
     uint submissionPeriodFinishedAt,
     uint claimPeriodFinishedAt,
-    string memory encryptedDescriptionCIDPath,
-    string memory encryptedPresubmissionTesterCCCIDPath,
-    bytes32 postclaimTesterCCHash
+    string calldata cid,
+    bytes32 passphraseHash,
+    bytes32 postclaimTesterRCHash
   ) external payable {
     Contest newContest = new Contest{value: msg.value}(
-      name,
       msg.sender,
       organizerDeposit,
       announcementPeriodFinishedAt,
       submissionPeriodFinishedAt,
       claimPeriodFinishedAt,
-      encryptedDescriptionCIDPath,
-      encryptedPresubmissionTesterCCCIDPath,
-      postclaimTesterCCHash
+      passphraseHash,
+      postclaimTesterRCHash
     );
 
     nContests++;
@@ -48,7 +45,7 @@ contract ContestsManager {
     nextContest[tailContest] = newContest;
     tailContest = newContest;
 
-    emit ContestsChanged();
+    emit ContestsChanged(newContest);
   }
 
   function removeMe() external {
@@ -65,6 +62,6 @@ contract ContestsManager {
     delete prevContest[Contest(msg.sender)];
     delete nextContest[Contest(msg.sender)];
 
-    emit ContestsChanged();
+    emit ContestsChanged(Contest(msg.sender));
   }
 }

@@ -20,17 +20,12 @@ contract Contest {
     Claim
   }
 
-  Period public period = Period.Announcement;
+  Period public period;
   event PeriodChanged(Period period);
 
   modifier onlyDuring(Period p) {
     require(period == p, "Too early or late to call this function");
     _;
-  }
-
-  function moveIntoNextPeriod() internal {
-    period = Period(uint(period) + 1);
-    emit PeriodChanged(period);
   }
 
 
@@ -49,22 +44,44 @@ contract Contest {
 
 
 
-  function createContractByCC(bytes memory cc) internal returns (address addr) {
-    assembly {
-      let ccOffset := add(cc, 0x20)
-      let ccLength := mload(cc)
-      addr := create(0, ccOffset, ccLength)
+  function getRC(address a) internal returns (bytes memory rc) {
+    uint rcSize;
+    assembly { rcSize := extcodesize(a) }
+    rc = new bytes(rcSize);
+    assembly { extcodecopy(a, add(rc, 0x20), 0, rcSize) }
+  }
+
+  function isRCPureAndStandalone(bytes memory rc) internal returns (bool) {
+    bool code = true;
+    for(uint i = 0; i < rc.length; i++) {
+      if (code) {
+        if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
+          i += uint8(rc[i]) - 0x5f;
+        } else if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a) {
+          return false;
+        } else if (uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
+          return false;
+        } else if (uint8(rc[i]) == 0xfe) {
+          code = false;
+        }
+      } else {
+        if (uint8(rc[i]) == 0x5b) {
+          code = true;
+        }
+      }
     }
+    return true;
   }
 
 
 
 
-  ContestsManager public immutable contestsManager;
+  ContestsManager private immutable contestsManager;
 
-  string public name;
+  uint public immutable createdBlockNumber;
 
   address public immutable organizer;
+
   uint public immutable organizerDeposit;
 
   uint public immutable announcementPeriodFinishedAt;
@@ -73,58 +90,60 @@ contract Contest {
 
   uint public constant timedrift = 10 minutes;
 
-  string public encryptedDescriptionCIDPath;
-  string public encryptedPresubmissionTesterCCCIDPath;
-  string public passphrase;
+  bytes32 private immutable passphraseHash;
+
+  bytes32 private immutable postclaimTesterRCHash;
 
   mapping(address => uint) public submissionTimestamp;
-  mapping(address => bytes32) private submissionCCAddressHash;
 
-  bytes32 private immutable postclaimTesterCCHash;
-  bytes private postclaimTesterCC;
+  mapping(address => bytes32) private submissionRCAddressHash;
+
+  ITester private postclaimTester;
 
   address public winner;
   event WinnerChanged(address winner);
 
   constructor(
-    string memory _name,
     address _organizer,
     uint _organizerDeposit,
     uint _announcementPeriodFinishedAt,
     uint _submissionPeriodFinishedAt,
     uint _claimPeriodFinishedAt,
-    string memory _encryptedDescriptionCIDPath,
-    string memory _encryptedPresubmissionTesterCCCIDPath,
-    bytes32 _postclaimTesterCCHash
+    bytes32 _passphraseHash,
+    bytes32 _postclaimTesterRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
 
     require(_announcementPeriodFinishedAt + timedrift <= _submissionPeriodFinishedAt, "The submission period is too short");
     require(_submissionPeriodFinishedAt + timedrift <= _claimPeriodFinishedAt, "The claim period is too short");
 
+    period = Period.Announcement;
+    emit PeriodChanged(Period.Announcement);
+
     contestsManager = ContestsManager(msg.sender);
 
-    name = _name;
+    createdBlockNumber = block.number;
 
     organizer = _organizer;
+
     organizerDeposit = _organizerDeposit;
 
     announcementPeriodFinishedAt = _announcementPeriodFinishedAt;
     submissionPeriodFinishedAt = _submissionPeriodFinishedAt;
     claimPeriodFinishedAt = _claimPeriodFinishedAt;
 
-    encryptedDescriptionCIDPath = _encryptedDescriptionCIDPath;
-    encryptedPresubmissionTesterCCCIDPath = _encryptedPresubmissionTesterCCCIDPath;
+    passphraseHash = _passphraseHash;
+
+    postclaimTesterRCHash = _postclaimTesterRCHash;
 
     submissionTimestamp[_organizer] = type(uint).max;
 
-    postclaimTesterCCHash = _postclaimTesterCCHash;
-
     winner = _organizer;
+    emit WinnerChanged(_organizer);
   }
 
   function startSubmissionPeriod(
-    string memory _passphrase
+    string memory passphrase
   )
   external
   onlyBy(organizer)
@@ -132,24 +151,26 @@ contract Contest {
   onlyAfter(announcementPeriodFinishedAt)
   onlyBefore(announcementPeriodFinishedAt + timedrift)
   {
-    moveIntoNextPeriod();
+    require(keccak256(abi.encodePacked(passphrase)) == passphraseHash, "The hashes do not match");
 
-    passphrase = _passphrase;
+    period = Period.Submission;
+    emit PeriodChanged(Period.Submission);
   }
 
   function submit(
-    bytes32 _submissionCCAddressHash
+    bytes32 _submissionRCAddressHash
   )
   external
   onlyDuring(Period.Submission)
   onlyBefore(submissionPeriodFinishedAt)
   {
     submissionTimestamp[msg.sender] = block.timestamp;
-    submissionCCAddressHash[msg.sender] = _submissionCCAddressHash;
+
+    submissionRCAddressHash[msg.sender] = _submissionRCAddressHash;
   }
 
   function startClaimPeriod(
-    bytes memory _postclaimTesterCC
+    ITester _postclaimTester
   )
   external
   onlyBy(organizer)
@@ -157,26 +178,35 @@ contract Contest {
   onlyAfter(submissionPeriodFinishedAt)
   onlyBefore(submissionPeriodFinishedAt + timedrift)
   {
-    require(keccak256(_postclaimTesterCC) == postclaimTesterCCHash, "The hashes do not match");
+    bytes memory postclaimTesterRC = getRC(address(_postclaimTester));
+    require(keccak256(postclaimTesterRC) == postclaimTesterRCHash, "The hashes do not match");
+    require(isRCPureAndStandalone(postclaimTesterRC), "The postclaim tester is non-pure or non-standalone");
 
-    moveIntoNextPeriod();
+    period = Period.Claim;
+    emit PeriodChanged(Period.Claim);
 
-    postclaimTesterCC = _postclaimTesterCC;
+    postclaimTester = _postclaimTester;
   }
 
   function claim(
-    bytes memory submissionCC
+    ISubmission submission
   )
   external
   onlyDuring(Period.Claim)
   onlyBefore(claimPeriodFinishedAt)
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
-    require(keccak256(abi.encodePacked(submissionCC, msg.sender)) == submissionCCAddressHash[msg.sender], "The hashes do not match");
-    require(ITester(createContractByCC(postclaimTesterCC)).test(ISubmission(createContractByCC(submissionCC))), "Your submission is wrong");
+
+    bytes memory submissionRC = getRC(address(submission));
+    require(keccak256(abi.encodePacked(submissionRC, msg.sender)) == submissionRCAddressHash[msg.sender], "The hashes do not match");
+    require(isRCPureAndStandalone(submissionRC), "The submission is non-pure or non-standalone");
+
+    require(postclaimTester.isOutput1Correct(submission.main(postclaimTester.input1())), "Your submission is wrong");
+    require(postclaimTester.isOutput2Correct(submission.main(postclaimTester.input2())), "Your submission is wrong");
+    require(postclaimTester.isOutput3Correct(submission.main(postclaimTester.input3())), "Your submission is wrong");
 
     winner = msg.sender;
-    emit WinnerChanged(winner);
+    emit WinnerChanged(msg.sender);
   }
 
   function terminateNormally()

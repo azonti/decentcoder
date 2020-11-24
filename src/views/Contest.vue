@@ -37,15 +37,16 @@ export default {
     return {
       contest: null,
       blockTimestamp: 0,
+      createdBlockNumber: 0,
       period: null,
       announcementPeriodFinishedAt: null,
       submissionPeriodFinishedAt: null,
       claimPeriodFinishedAt: null,
       timedrift: null,
+      winner: '',
       encryptedDescription: '',
       encryptedPresubmissionTesterCC: '',
       passphrase: '',
-      winner: '',
       submitting: false,
       claiming: false
     }
@@ -95,72 +96,111 @@ export default {
     async initialize () {
       this.contest = await this.$Contest.at(this.$route.params.address)
 
+      await this.setCreatedBlockNumber()
+
       this.$web3.eth.subscribe('newBlockHeaders').on('data', this.setBlockTimestamp)
-      this.contest.PeriodChanged().on('data', r => this.setPeriodAndPassphrase(r.returnValues.period))
-      this.contest.WinnerChanged().on('data', r => this.setWinner(r.returnValues.winner))
+      this.contest.PeriodChanged().on('data', event => this.setPeriod(event).then(this.setPassphrase))
+      this.contest.WinnerChanged().on('data', this.setWinner)
 
       await Promise.all([
-        this.contest.name().then(this.setPageName),
-        this.$web3.eth.getBlock('latest').then(this.setBlockTimestamp),
-        this.contest.period().then(this.setPeriodAndPassphrase),
-        this.contest.announcementPeriodFinishedAt().then(this.setAnnouncementPeriodFinishedAt),
-        this.contest.submissionPeriodFinishedAt().then(this.setSubmissionPeriodFinishedAt),
-        this.contest.claimPeriodFinishedAt().then(this.setClaimPeriodFinishedAt),
-        this.contest.timedrift().then(this.setTimedrift),
-        this.contest.encryptedDescriptionCIDPath().then(this.setEncryptedDescription),
-        this.contest.encryptedPresubmissionTesterCCCIDPath().then(this.setEncryptedPresubmissionTesterCC),
-        this.contest.winner().then(this.setWinner)
+        this.setBlockTimestamp(),
+        this.setPeriod().then(this.setPassphrase),
+        this.setAnnouncementPeriodFinishedAt(),
+        this.setSubmissionPeriodFinishedAt(),
+        this.setClaimPeriodFinishedAt(),
+        this.setTimedrift(),
+        this.setWinner(),
+        this.setPageNameAndEncryptedDescriptionAndEncryptedPresubmissionTesterCC()
       ])
     },
-    setPageName (pageName) {
-      this.$emit('set-page-name', pageName)
-    },
-    setBlockTimestamp (blockHeader) {
-      this.blockTimestamp = blockHeader.timestamp
-    },
-    async setPeriodAndPassphrase (period) {
-      if (this.$web3.utils.isBN(period)) {
-        this.period = period
+    async setBlockTimestamp (blockHeader) {
+      if (blockHeader) {
+        this.blockTimestamp = blockHeader.timestamp
       } else {
-        this.period = this.$web3.utils.toBN(period)
-      }
-      if (this.period.gte(this.$web3.utils.toBN(1))) {
-        this.passphrase = await this.contest.passphrase()
+        const block = await this.$web3.eth.getBlock('latest')
+        this.blockTimestamp = block.timestamp
       }
     },
-    setAnnouncementPeriodFinishedAt (announcementPeriodFinishedAt) {
-      this.announcementPeriodFinishedAt = announcementPeriodFinishedAt
+    async setCreatedBlockNumber () {
+      this.createdBlockNumber = await this.contest.createdBlockNumber()
     },
-    setSubmissionPeriodFinishedAt (submissionPeriodFinishedAt) {
-      this.submissionPeriodFinishedAt = submissionPeriodFinishedAt
-    },
-    setClaimPeriodFinishedAt (claimPeriodFinishedAt) {
-      this.claimPeriodFinishedAt = claimPeriodFinishedAt
-    },
-    setTimedrift (timedrift) {
-      this.timedrift = timedrift
-    },
-    async setEncryptedDescription (encryptedDescriptionCIDPath) {
-      let encryptedDescription = ''
-      const decoder = new TextDecoder()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + encryptedDescriptionCIDPath)) {
-        encryptedDescription += decoder.decode(chunk)
+    async setPeriod (event) {
+      if (event) {
+        this.period = this.$web3.utils.toBN(event.returnValues.period)
+      } else {
+        this.period = await this.contest.period()
       }
-      this.encryptedDescription = encryptedDescription
     },
-    async setEncryptedPresubmissionTesterCC (encryptedPresubmissionTesterCCCIDPath) {
-      let encryptedPresubmissionTesterCC = ''
-      const decoder = new TextDecoder()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + encryptedPresubmissionTesterCCCIDPath)) {
-        encryptedPresubmissionTesterCC += decoder.decode(chunk)
+    async setAnnouncementPeriodFinishedAt () {
+      this.announcementPeriodFinishedAt = await this.contest.announcementPeriodFinishedAt()
+    },
+    async setSubmissionPeriodFinishedAt () {
+      this.submissionPeriodFinishedAt = await this.contest.submissionPeriodFinishedAt()
+    },
+    async setClaimPeriodFinishedAt () {
+      this.claimPeriodFinishedAt = await this.contest.claimPeriodFinishedAt()
+    },
+    async setTimedrift () {
+      this.timedrift = await this.contest.timedrift()
+    },
+    async setPageNameAndEncryptedDescriptionAndEncryptedPresubmissionTesterCC () {
+      const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
+      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '0')[0].transactionHash)
+      const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
+      await Promise.all([
+        this.setPageName(cid),
+        this.setEncryptedDescription(cid),
+        this.setEncryptedPresubmissionTesterCC(cid)
+      ])
+    },
+    async setPageName (cid) {
+      let name = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {
+        const newName = new Uint8Array(name.length + chunk.length)
+        newName.set(name)
+        newName.set(chunk, name.length)
+        name = newName
       }
-      this.encryptedPresubmissionTesterCC = encryptedPresubmissionTesterCC
+      this.$emit('set-page-name', (new TextDecoder()).decode(name))
     },
-    setWinner (winner) {
-      this.winner = winner
+    async setEncryptedDescription (cid) {
+      let encryptedDescription = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedDescription')) {
+        const newEncryptedDescription = new Uint8Array(encryptedDescription.length + chunk.length)
+        newEncryptedDescription.set(encryptedDescription)
+        newEncryptedDescription.set(chunk, encryptedDescription.length)
+        encryptedDescription = newEncryptedDescription
+      }
+      this.encryptedDescription = (new TextDecoder()).decode(encryptedDescription)
+    },
+    async setEncryptedPresubmissionTesterCC (cid) {
+      let encryptedPresubmissionTesterCC = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedPresubmissionTesterCC')) {
+        const newEncryptedPresubmissionTesterCC = new Uint8Array(encryptedPresubmissionTesterCC.length + chunk.length)
+        newEncryptedPresubmissionTesterCC.set(encryptedPresubmissionTesterCC)
+        newEncryptedPresubmissionTesterCC.set(chunk, encryptedPresubmissionTesterCC.length)
+        encryptedPresubmissionTesterCC = newEncryptedPresubmissionTesterCC
+      }
+      this.encryptedPresubmissionTesterCC = (new TextDecoder()).decode(encryptedPresubmissionTesterCC)
+    },
+    async setWinner (event) {
+      if (event) {
+        this.winner = event.returnValues.winner
+      } else {
+        this.winner = await this.contest.winner()
+      }
+    },
+    async setPassphrase () {
+      if (this.period.gte(this.$web3.utils.toBN(1)) && !this.passphrase) {
+        const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
+        const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '1')[0].transactionHash)
+        this.passphrase = this.$web3.eth.abi.decodeParameters(this.$Contest.abi[14].inputs, transaction.input.substring(10)).passphrase
+      }
     },
     async submit () {
       this.submitting = true
+
+      const accounts = await this.$web3.eth.getAccounts()
 
       const privateKey = Buffer.from('e331b6d69882b4cb4ea581d88e0b604039a3de5967688d3dcffdd2270c0fd109', 'hex')
       const address = this.$EthereumJS.Address.fromPrivateKey(privateKey)
@@ -180,9 +220,7 @@ export default {
         nonce: 0
       }).sign(privateKey)
       const presubmissionTesterCR = await vm.runTx({ tx: presubmissionTesterCTX })
-      if (presubmissionTesterCR.execResult.exceptionError) {
-        throw presubmissionTesterCR.execResult.exceptionError
-      }
+      if (presubmissionTesterCR.execResult.exceptionError) throw presubmissionTesterCR.execResult.exceptionError
       const presubmissionTesterAddress = presubmissionTesterCR.createdAddress
 
       const submissionJSON = await document.getElementById('submissionJSONToSubmit').files[0].text()
@@ -195,41 +233,62 @@ export default {
         nonce: 1
       }).sign(privateKey)
       const submissionCR = await vm.runTx({ tx: submissionCTX })
-      if (submissionCR.execResult.exceptionError) {
-        throw submissionCR.execResult.exceptionError
-      }
+      if (submissionCR.execResult.exceptionError) throw submissionCR.execResult.exceptionError
       const submissionAddress = submissionCR.createdAddress
 
-      const testR = await vm.runCall({
+      const testInput1R = await vm.runCall({
         origin: address,
         caller: address,
         to: presubmissionTesterAddress,
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ITester.abi[0], [submissionAddress.toString()]).replace(/^0x/, ''), 'hex')
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ITester.abi[0], []).replace(/^0x/, ''), 'hex')
       })
-      if (testR.execResult.exceptionError) {
-        throw testR.execResult.exceptionError
-      }
-      const testRV = this.$web3.eth.abi.decodeParameters(this.$ITester.abi[0].outputs, testR.execResult.returnValue.toString('hex'))
-      if (!testRV.passed) {
-        throw new Error('Presubmission Test Failed')
-      }
+      if (testInput1R.execResult.exceptionError) throw testInput1R.execResult.exceptionError
+      const testInput1RV = this.$web3.eth.abi.decodeParameters(this.$ITester.abi[0].outputs, testInput1R.execResult.returnValue.toString('hex'))[0]
 
-      const accounts = await this.$web3.eth.getAccounts()
-      await this.contest.submit(this.$web3.utils.soliditySha3(submissionCC, accounts[1]), { from: accounts[1] })
+      const testOutput1R = await vm.runCall({
+        origin: address,
+        caller: address,
+        to: submissionAddress,
+        value: 0,
+        gasLimit: this.$web3.utils.toBN('10000000000000000'),
+        gasPrice: 1,
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ISubmission.abi[0], [testInput1RV]).replace(/^0x/, ''), 'hex')
+      })
+      if (testOutput1R.execResult.exceptionError) throw testOutput1R.execResult.exceptionError
+      const testOutput1RV = this.$web3.eth.abi.decodeParameters(this.$ISubmission.abi[0].outputs, testOutput1R.execResult.returnValue.toString('hex'))[0]
+
+      const test1R = await vm.runCall({
+        origin: address,
+        caller: address,
+        to: presubmissionTesterAddress,
+        value: 0,
+        gasLimit: this.$web3.utils.toBN('10000000000000000'),
+        gasPrice: 1,
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ITester.abi[3], [testOutput1RV]).replace(/^0x/, ''), 'hex')
+      })
+      if (test1R.execResult.exceptionError) throw test1R.execResult.exceptionError
+      const test1RV = this.$web3.eth.abi.decodeParameters(this.$ITester.abi[3].outputs, test1R.execResult.returnValue.toString('hex'))[0]
+      if (!test1RV) throw new Error('Presubmission Test Failed')
+
+      const submissionRC = JSON.parse(submissionJSON).deployedBytecode
+      await this.contest.submit(this.$web3.utils.soliditySha3(submissionRC, accounts[1]), { from: accounts[1] })
 
       this.submitting = false
     },
     async claim () {
       this.claiming = true
 
-      const submissionJSON = await document.getElementById('submissionJSONToClaim').files[0].text()
-      const submissionCC = JSON.parse(submissionJSON).bytecode
-
       const accounts = await this.$web3.eth.getAccounts()
-      await this.contest.claim(submissionCC, { from: accounts[1] })
+
+      const submissionJSON = await document.getElementById('submissionJSONToClaim').files[0].text()
+      const Submission = this.$contract(JSON.parse(submissionJSON))
+      Submission.setProvider(this.$web3.currentProvider)
+      const submission = await Submission.new({ from: accounts[1] })
+
+      await this.contest.claim(submission.address, { from: accounts[1] })
 
       this.claiming = false
     }

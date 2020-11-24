@@ -17,24 +17,40 @@ export default {
   data () {
     return {
       contest: null,
-      name: '',
-      organizer: ''
+      createdBlockNumber: 0,
+      organizer: '',
+      name: ''
     }
   },
   async mounted () {
     this.contest = await this.$Contest.at(this.address)
 
+    await this.setCreatedBlockNumber()
+
     await Promise.all([
-      this.contest.name().then(this.setName),
-      this.contest.organizer().then(this.setOrganizer)
+      this.setOrganizer(),
+      this.setName()
     ])
   },
   methods: {
-    setName (name) {
-      this.name = name
+    async setCreatedBlockNumber () {
+      this.createdBlockNumber = await this.contest.createdBlockNumber()
     },
-    setOrganizer (organizer) {
-      this.organizer = organizer
+    async setOrganizer () {
+      this.organizer = await this.contest.organizer()
+    },
+    async setName () {
+      const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
+      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '0')[0].transactionHash)
+      const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
+      let name = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {
+        const newName = new Uint8Array(name.length + chunk.length)
+        newName.set(name)
+        newName.set(chunk, name.length)
+        name = newName
+      }
+      this.name = (new TextDecoder()).decode(name)
     }
   }
 }

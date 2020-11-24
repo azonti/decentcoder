@@ -31,8 +31,16 @@ export default {
     await this.setAddresses()
   },
   methods: {
-    async setAddresses () {
-      this.addresses = await this.contestsManager.contests()
+    async setAddresses (event) {
+      if (event) {
+        if (this.addresses.includes(event.returnValues.contest)) {
+          this.addresses = this.addresses.filter(address => address !== event.returnValues.contest)
+        } else {
+          this.addresses.push(event.returnValues.contest)
+        }
+      } else {
+        this.addresses = await this.contestsManager.contests()
+      }
     }
   }
 }

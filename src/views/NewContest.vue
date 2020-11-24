@@ -68,50 +68,63 @@ export default {
     async createAndPushNewContest () {
       this.creating = true
 
+      const accounts = await this.$web3.eth.getAccounts()
+
       const [
-        encryptedDescriptionCIDPath,
-        encryptedPresubmissionTesterCCCIDPath,
-        postclaimTesterCCHash,
-        accounts
+        postclaimTesterRCHash,
+        cid
       ] = await Promise.all([
-        this.getEncryptedDescriptionCIDPathToCreateAndPushNewContest(),
-        this.getEncryptedPresubmissionTesterCCCIDPathToCreateAndPushNewContest(),
-        this.getPostclaimTesterCCHashToCreateAndPushNewContest(),
-        this.$web3.eth.getAccounts()
+        this.getPostclaimTesterRCHashToCreateAndPushNewContest(),
+        this.getCIDToCreateAndPushNewContest()
       ])
-      await this.contestsManager.createAndPushNewContest(
-        this.name,
+      const result = await this.contestsManager.createAndPushNewContest(
         this.$web3.utils.toWei(this.organizerDepositEther),
         this.$dayjs(this.announcementPeriodFinishedAtDTL).unix(),
         this.$dayjs(this.submissionPeriodFinishedAtDTL).unix(),
         this.$dayjs(this.claimPeriodFinishedAtDTL).unix(),
-        encryptedDescriptionCIDPath,
-        encryptedPresubmissionTesterCCCIDPath,
-        postclaimTesterCCHash,
+        cid,
+        this.$web3.utils.soliditySha3(this.passphrase),
+        postclaimTesterRCHash,
         {
           from: accounts[0],
           value: this.$web3.utils.toBN(this.$web3.utils.toWei(this.organizerDepositEther)).add(this.$web3.utils.toBN(this.$web3.utils.toWei(this.prizeEther)))
         }
       )
 
+      this.$router.push('/contests/' + result.logs[0].args.contest + '/organizer')
+
       this.creating = false
     },
-    async getEncryptedDescriptionCIDPathToCreateAndPushNewContest () {
-      const encryptedDescription = this.$CryptoJS.AES.encrypt(this.description, this.passphrase).toString()
-      const encryptedDescriptionUnixFSEntry = await this.$ipfs.add(encryptedDescription)
-      return encryptedDescriptionUnixFSEntry.cid.toString()
+    async getPostclaimTesterRCHashToCreateAndPushNewContest () {
+      const postclaimTesterJSON = await document.getElementById('postclaimTesterJSON').files[0].text()
+      const postclaimTesterRC = JSON.parse(postclaimTesterJSON).deployedBytecode
+      return this.$web3.utils.soliditySha3(postclaimTesterRC)
     },
-    async getEncryptedPresubmissionTesterCCCIDPathToCreateAndPushNewContest () {
+    async getCIDToCreateAndPushNewContest () {
+      const nameFileObject = {
+        path: 'tmp/name',
+        content: this.name
+      }
+
+      const encryptedDescription = this.$CryptoJS.AES.encrypt(this.description, this.passphrase).toString()
+      const encryptedDescriptionFileObject = {
+        path: 'tmp/encryptedDescription',
+        content: encryptedDescription
+      }
+
       const presubmissionTesterJSON = await document.getElementById('presubmissionTesterJSON').files[0].text()
       const presubmissionTesterCC = JSON.parse(presubmissionTesterJSON).bytecode
       const encryptedPresubmissionTesterCC = this.$CryptoJS.AES.encrypt(presubmissionTesterCC, this.passphrase).toString()
-      const presubmissionTesterUnixFSEntry = await this.$ipfs.add(encryptedPresubmissionTesterCC)
-      return presubmissionTesterUnixFSEntry.cid.toString()
-    },
-    async getPostclaimTesterCCHashToCreateAndPushNewContest () {
-      const postclaimTesterJSON = await document.getElementById('postclaimTesterJSON').files[0].text()
-      const postclaimTesterCC = JSON.parse(postclaimTesterJSON).bytecode
-      return this.$web3.utils.soliditySha3(postclaimTesterCC)
+      const encryptedPresubmissionTesterCCFileObject = {
+        path: 'tmp/encryptedPresubmissionTesterCC',
+        content: encryptedPresubmissionTesterCC
+      }
+
+      for await (const unixFSEntry of this.$ipfs.addAll([nameFileObject, encryptedDescriptionFileObject, encryptedPresubmissionTesterCCFileObject])) {
+        if (unixFSEntry.path === 'tmp') {
+          return unixFSEntry.cid.toString()
+        }
+      }
     }
   }
 }
