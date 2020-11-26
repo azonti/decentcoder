@@ -3,7 +3,7 @@ pragma solidity ^0.7.3;
 
 import "./ContestsManager.sol";
 import "./ITester.sol";
-import "./ISubmission.sol";
+import "./IAnswer.sol";
 
 contract Contest {
   modifier onlyBy(address a) {
@@ -102,7 +102,7 @@ contract Contest {
 
   mapping(address => uint) public submissionTimestamp;
 
-  mapping(address => bytes32) private submissionRCHashAddressHash;
+  mapping(address => bytes32) private answerRCHashAddressHash;
 
   ITester private postclaimTester;
 
@@ -164,7 +164,7 @@ contract Contest {
   }
 
   function submit(
-    bytes32 _submissionRCHashAddressHash
+    bytes32 _answerRCHashAddressHash
   )
   external
   onlyDuring(Phase.Submission)
@@ -172,7 +172,7 @@ contract Contest {
   {
     submissionTimestamp[msg.sender] = block.timestamp;
 
-    submissionRCHashAddressHash[msg.sender] = _submissionRCHashAddressHash;
+    answerRCHashAddressHash[msg.sender] = _answerRCHashAddressHash;
   }
 
   function startClaimPhase(
@@ -196,7 +196,7 @@ contract Contest {
   }
 
   function claim(
-    ISubmission submission
+    IAnswer answer
   )
   external
   onlyDuring(Phase.Claim)
@@ -204,14 +204,14 @@ contract Contest {
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
 
-    bytes32 submissionRCHash = getRCHash(address(submission));
-    require(keccak256(abi.encodePacked(submissionRCHash, msg.sender)) == submissionRCHashAddressHash[msg.sender], "The hashes do not match");
-    bytes memory submissionRC = getRC(address(submission));
-    require(isRCPureAndStandalone(submissionRC), "The submission is non-pure or non-standalone");
+    bytes32 answerRCHash = getRCHash(address(answer));
+    require(keccak256(abi.encodePacked(answerRCHash, msg.sender)) == answerRCHashAddressHash[msg.sender], "The hashes do not match");
+    bytes memory answerRC = getRC(address(answer));
+    require(isRCPureAndStandalone(answerRC), "The answer is non-pure or non-standalone");
 
-    require(postclaimTester.isOutput1Correct(submission.main(postclaimTester.input1())), "Your submission is wrong");
-    require(postclaimTester.isOutput2Correct(submission.main(postclaimTester.input2())), "Your submission is wrong");
-    require(postclaimTester.isOutput3Correct(submission.main(postclaimTester.input3())), "Your submission is wrong");
+    require(postclaimTester.isOutput1Correct(answer.answer(postclaimTester.input1())), "Your answer is wrong");
+    require(postclaimTester.isOutput2Correct(answer.answer(postclaimTester.input2())), "Your answer is wrong");
+    require(postclaimTester.isOutput3Correct(answer.answer(postclaimTester.input3())), "Your answer is wrong");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);

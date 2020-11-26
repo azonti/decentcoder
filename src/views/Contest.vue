@@ -9,8 +9,8 @@
     <div v-if="realPhase === 'submission'">
       <form @submit.prevent="submit">
         <md-field>
-          <label>Submission.json</label>
-          <md-file id="submissionJSONToSubmit" required/>
+          <label>Answer.json</label>
+          <md-file id="answerJSONToSubmit" required/>
         </md-field>
         <md-button type="submit" :disabled="!encryptedPresubmissionTesterCC || !passphrase || submitting">Submit</md-button>
       </form>
@@ -18,8 +18,8 @@
     <div v-else-if="realPhase === 'claim'">
       <form @submit.prevent="claim">
         <md-field>
-          <label>Submission.json</label>
-          <md-file id="submissionJSONToClaim" required/>
+          <label>Answer.json</label>
+          <md-file id="answerJSONToClaim" required/>
         </md-field>
         <md-button type="submit" :disabled="claiming">Claim</md-button>
       </form>
@@ -223,18 +223,18 @@ export default {
       if (presubmissionTesterCR.execResult.exceptionError) throw presubmissionTesterCR.execResult.exceptionError
       const presubmissionTesterAddress = presubmissionTesterCR.createdAddress
 
-      const submissionJSON = await document.getElementById('submissionJSONToSubmit').files[0].text()
-      const submissionCC = JSON.parse(submissionJSON).bytecode
-      const submissionCTX = this.$EthereumJS.Transaction.fromTxData({
+      const answerJSON = await document.getElementById('answerJSONToSubmit').files[0].text()
+      const answerCC = JSON.parse(answerJSON).bytecode
+      const answerCTX = this.$EthereumJS.Transaction.fromTxData({
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: submissionCC,
+        data: answerCC,
         nonce: 1
       }).sign(privateKey)
-      const submissionCR = await vm.runTx({ tx: submissionCTX })
-      if (submissionCR.execResult.exceptionError) throw submissionCR.execResult.exceptionError
-      const submissionAddress = submissionCR.createdAddress
+      const answerCR = await vm.runTx({ tx: answerCTX })
+      if (answerCR.execResult.exceptionError) throw answerCR.execResult.exceptionError
+      const answerAddress = answerCR.createdAddress
 
       const testInput1R = await vm.runCall({
         origin: address,
@@ -251,14 +251,14 @@ export default {
       const testOutput1R = await vm.runCall({
         origin: address,
         caller: address,
-        to: submissionAddress,
+        to: answerAddress,
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ISubmission.abi[0], [testInput1RV]).replace(/^0x/, ''), 'hex')
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$IAnswer.abi[0], [testInput1RV]).replace(/^0x/, ''), 'hex')
       })
       if (testOutput1R.execResult.exceptionError) throw testOutput1R.execResult.exceptionError
-      const testOutput1RV = this.$web3.eth.abi.decodeParameters(this.$ISubmission.abi[0].outputs, testOutput1R.execResult.returnValue.toString('hex'))[0]
+      const testOutput1RV = this.$web3.eth.abi.decodeParameters(this.$IAnswer.abi[0].outputs, testOutput1R.execResult.returnValue.toString('hex'))[0]
 
       const test1R = await vm.runCall({
         origin: address,
@@ -273,8 +273,8 @@ export default {
       const test1RV = this.$web3.eth.abi.decodeParameters(this.$ITester.abi[3].outputs, test1R.execResult.returnValue.toString('hex'))[0]
       if (!test1RV) throw new Error('Presubmission Test Failed')
 
-      const submissionRC = JSON.parse(submissionJSON).deployedBytecode
-      await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(submissionRC), accounts[1]), { from: accounts[1] })
+      const answerRC = JSON.parse(answerJSON).deployedBytecode
+      await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), accounts[1]), { from: accounts[1] })
 
       this.submitting = false
     },
@@ -283,12 +283,12 @@ export default {
 
       const accounts = await this.$web3.eth.getAccounts()
 
-      const submissionJSON = await document.getElementById('submissionJSONToClaim').files[0].text()
-      const Submission = this.$contract(JSON.parse(submissionJSON))
-      Submission.setProvider(this.$web3.currentProvider)
-      const submission = await Submission.new({ from: accounts[1] })
+      const answerJSON = await document.getElementById('answerJSONToClaim').files[0].text()
+      const Answer = this.$contract(JSON.parse(answerJSON))
+      Answer.setProvider(this.$web3.currentProvider)
+      const answer = await Answer.new({ from: accounts[1] })
 
-      await this.contest.claim(submission.address, { from: accounts[1] })
+      await this.contest.claim(answer.address, { from: accounts[1] })
 
       this.claiming = false
     }
