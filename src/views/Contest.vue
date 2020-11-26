@@ -31,8 +31,13 @@
 </template>
 
 <script>
+import IPFSCat from '@/mixins/ipfs-cat.js'
+
 export default {
   name: 'Contest',
+  mixins: [
+    IPFSCat
+  ],
   data () {
     return {
       contest: null,
@@ -154,34 +159,13 @@ export default {
       ])
     },
     async setPageName (cid) {
-      let name = new Uint8Array()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {
-        const newName = new Uint8Array(name.length + chunk.length)
-        newName.set(name)
-        newName.set(chunk, name.length)
-        name = newName
-      }
-      this.$emit('set-page-name', (new TextDecoder()).decode(name))
+      this.$emit('set-page-name', await this.ipfsCat(cid + '/name'))
     },
     async setEncryptedContent (cid) {
-      let encryptedContent = new Uint8Array()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedContent')) {
-        const newEncryptedContent = new Uint8Array(encryptedContent.length + chunk.length)
-        newEncryptedContent.set(encryptedContent)
-        newEncryptedContent.set(chunk, encryptedContent.length)
-        encryptedContent = newEncryptedContent
-      }
-      this.encryptedContent = (new TextDecoder()).decode(encryptedContent)
+      this.encryptedContent = await this.ipfsCat(cid + '/encryptedContent')
     },
     async setEncryptedLocalCorrectnessCC (cid) {
-      let encryptedLocalCorrectnessCC = new Uint8Array()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedLocalCorrectnessCC')) {
-        const newEncryptedLocalCorrectnessCC = new Uint8Array(encryptedLocalCorrectnessCC.length + chunk.length)
-        newEncryptedLocalCorrectnessCC.set(encryptedLocalCorrectnessCC)
-        newEncryptedLocalCorrectnessCC.set(chunk, encryptedLocalCorrectnessCC.length)
-        encryptedLocalCorrectnessCC = newEncryptedLocalCorrectnessCC
-      }
-      this.encryptedLocalCorrectnessCC = (new TextDecoder()).decode(encryptedLocalCorrectnessCC)
+      this.encryptedLocalCorrectnessCC = await this.ipfsCat(cid + '/encryptedLocalCorrectnessCC')
     },
     async setWinner (event) {
       if (event) {

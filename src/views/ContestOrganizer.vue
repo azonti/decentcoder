@@ -25,8 +25,13 @@
 </template>
 
 <script>
+import IPFSCat from '@/mixins/ipfs-cat.js'
+
 export default {
   name: 'ContestOrganizer',
+  mixins: [
+    IPFSCat
+  ],
   data () {
     return {
       contest: null,
@@ -128,14 +133,7 @@ export default {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
       const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '0')[0].transactionHash)
       const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
-      let name = new Uint8Array()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {
-        const newName = new Uint8Array(name.length + chunk.length)
-        newName.set(name)
-        newName.set(chunk, name.length)
-        name = newName
-      }
-      this.$emit('set-page-name', (new TextDecoder()).decode(name) + ' Organizer')
+      this.$emit('set-page-name', (await this.ipfsCat(cid + '/name')) + ' Organizer')
     },
     async startSubmissionPhase () {
       this.startingSubmissionPhase = true
