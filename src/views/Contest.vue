@@ -1,7 +1,7 @@
 <template>
   <div>
     <div>
-      {{ description }}
+      {{ content }}
     </div>
     <div>
       {{ winner }}
@@ -44,7 +44,7 @@ export default {
       claimPhaseFinishedAt: null,
       timedrift: null,
       winner: '',
-      encryptedDescription: '',
+      encryptedContent: '',
       encryptedLocalCorrectnessCC: '',
       passphrase: '',
       submitting: false,
@@ -75,13 +75,13 @@ export default {
       if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPhaseFinishedAt)) return 'claim'
       return 'normalTermination'
     },
-    description () {
+    content () {
       if (
-        !this.encryptedDescription ||
+        !this.encryptedContent ||
         !this.passphrase
       ) return ''
 
-      return this.$CryptoJS.AES.decrypt(this.encryptedDescription, this.passphrase).toString(this.$CryptoJS.enc.Utf8)
+      return this.$CryptoJS.AES.decrypt(this.encryptedContent, this.passphrase).toString(this.$CryptoJS.enc.Utf8)
     }
   },
   async mounted () {
@@ -110,7 +110,7 @@ export default {
         this.setClaimPhaseFinishedAt(),
         this.setTimedrift(),
         this.setWinner(),
-        this.setPageNameAndEncryptedDescriptionAndEncryptedLocalCorrectnessCC()
+        this.setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC()
       ])
     },
     async setBlockTimestamp (blockHeader) {
@@ -143,13 +143,13 @@ export default {
     async setTimedrift () {
       this.timedrift = await this.contest.timedrift()
     },
-    async setPageNameAndEncryptedDescriptionAndEncryptedLocalCorrectnessCC () {
+    async setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
       const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '0')[0].transactionHash)
       const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
       await Promise.all([
         this.setPageName(cid),
-        this.setEncryptedDescription(cid),
+        this.setEncryptedContent(cid),
         this.setEncryptedLocalCorrectnessCC(cid)
       ])
     },
@@ -163,15 +163,15 @@ export default {
       }
       this.$emit('set-page-name', (new TextDecoder()).decode(name))
     },
-    async setEncryptedDescription (cid) {
-      let encryptedDescription = new Uint8Array()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedDescription')) {
-        const newEncryptedDescription = new Uint8Array(encryptedDescription.length + chunk.length)
-        newEncryptedDescription.set(encryptedDescription)
-        newEncryptedDescription.set(chunk, encryptedDescription.length)
-        encryptedDescription = newEncryptedDescription
+    async setEncryptedContent (cid) {
+      let encryptedContent = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedContent')) {
+        const newEncryptedContent = new Uint8Array(encryptedContent.length + chunk.length)
+        newEncryptedContent.set(encryptedContent)
+        newEncryptedContent.set(chunk, encryptedContent.length)
+        encryptedContent = newEncryptedContent
       }
-      this.encryptedDescription = (new TextDecoder()).decode(encryptedDescription)
+      this.encryptedContent = (new TextDecoder()).decode(encryptedContent)
     },
     async setEncryptedLocalCorrectnessCC (cid) {
       let encryptedLocalCorrectnessCC = new Uint8Array()

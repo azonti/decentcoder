@@ -25,8 +25,8 @@
       <md-input type="datetime-local" required v-model="claimPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Description</label>
-      <md-textarea v-model="description"></md-textarea>
+      <label>Content</label>
+      <md-textarea v-model="content"></md-textarea>
     </md-field>
     <md-field>
       <label>LocalCorrectness.json</label>
@@ -56,7 +56,7 @@ export default {
       announcementPhaseFinishedAtDTL: '',
       submissionPhaseFinishedAtDTL: '',
       claimPhaseFinishedAtDTL: '',
-      description: '',
+      content: '',
       passphrase: '',
       creating: false
     }
@@ -106,10 +106,10 @@ export default {
         content: this.name
       }
 
-      const encryptedDescription = this.$CryptoJS.AES.encrypt(this.description, this.passphrase).toString()
-      const encryptedDescriptionFileObject = {
-        path: 'tmp/encryptedDescription',
-        content: encryptedDescription
+      const encryptedContent = this.$CryptoJS.AES.encrypt(this.content, this.passphrase).toString()
+      const encryptedContentFileObject = {
+        path: 'tmp/encryptedContent',
+        content: encryptedContent
       }
 
       const localCorrectnessJSON = await document.getElementById('localCorrectnessJSON').files[0].text()
@@ -120,7 +120,7 @@ export default {
         content: encryptedLocalCorrectnessCC
       }
 
-      for await (const unixFSEntry of this.$ipfs.addAll([nameFileObject, encryptedDescriptionFileObject, encryptedLocalCorrectnessCCFileObject])) {
+      for await (const unixFSEntry of this.$ipfs.addAll([nameFileObject, encryptedContentFileObject, encryptedLocalCorrectnessCCFileObject])) {
         if (unixFSEntry.path === 'tmp') {
           return unixFSEntry.cid.toString()
         }
