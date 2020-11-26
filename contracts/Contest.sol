@@ -17,7 +17,7 @@ contract Contest {
   enum Phase {
     Announcement,
     Submission,
-    Claim
+    Judgement
   }
 
   Phase public phase;
@@ -92,7 +92,7 @@ contract Contest {
 
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
-  uint public immutable claimPhaseFinishedAt;
+  uint public immutable judgementPhaseFinishedAt;
 
   uint public constant timedrift = 10 minutes;
 
@@ -114,14 +114,14 @@ contract Contest {
     uint _organizerDeposit,
     uint _announcementPhaseFinishedAt,
     uint _submissionPhaseFinishedAt,
-    uint _claimPhaseFinishedAt,
+    uint _judgementPhaseFinishedAt,
     bytes32 _passphraseHash,
     bytes32 _correctnessRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
 
     require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "The submission phase is too short");
-    require(_submissionPhaseFinishedAt + timedrift <= _claimPhaseFinishedAt, "The claim phase is too short");
+    require(_submissionPhaseFinishedAt + timedrift <= _judgementPhaseFinishedAt, "The judgement phase is too short");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
@@ -136,7 +136,7 @@ contract Contest {
 
     announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
     submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
-    claimPhaseFinishedAt = _claimPhaseFinishedAt;
+    judgementPhaseFinishedAt = _judgementPhaseFinishedAt;
 
     passphraseHash = _passphraseHash;
 
@@ -175,7 +175,7 @@ contract Contest {
     answerRCHashAddressHash[msg.sender] = _answerRCHashAddressHash;
   }
 
-  function startClaimPhase(
+  function startJudgementPhase(
     ICorrectness _correctness
   )
   external
@@ -189,18 +189,18 @@ contract Contest {
     bytes memory _correctnessRC = getRC(address(_correctness));
     require(isRCPureAndStandalone(_correctnessRC), "The correctness is non-pure or non-standalone");
 
-    phase = Phase.Claim;
-    emit PhaseChanged(Phase.Claim);
+    phase = Phase.Judgement;
+    emit PhaseChanged(Phase.Judgement);
 
     correctness = _correctness;
   }
 
-  function claim(
+  function judge(
     IAnswer answer
   )
   external
-  onlyDuring(Phase.Claim)
-  onlyBefore(claimPhaseFinishedAt)
+  onlyDuring(Phase.Judgement)
+  onlyBefore(judgementPhaseFinishedAt)
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
 
@@ -219,8 +219,8 @@ contract Contest {
 
   function terminateNormally()
   external
-  onlyDuring(Phase.Claim)
-  onlyAfter(claimPhaseFinishedAt)
+  onlyDuring(Phase.Judgement)
+  onlyAfter(judgementPhaseFinishedAt)
   {
     contestsManager.removeMe();
 

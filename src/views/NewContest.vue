@@ -21,8 +21,8 @@
       <md-input type="datetime-local" required v-model="submissionPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Claim Phase Finished at</label>
-      <md-input type="datetime-local" required v-model="claimPhaseFinishedAtDTL"/>
+      <label>Judgement Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="judgementPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
       <label>Content</label>
@@ -55,7 +55,7 @@ export default {
       prizeEther: '',
       announcementPhaseFinishedAtDTL: '',
       submissionPhaseFinishedAtDTL: '',
-      claimPhaseFinishedAtDTL: '',
+      judgementPhaseFinishedAtDTL: '',
       content: '',
       passphrase: '',
       creating: false
@@ -81,7 +81,7 @@ export default {
         this.$web3.utils.toWei(this.organizerDepositEther),
         this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
         this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.claimPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.judgementPhaseFinishedAtDTL).unix(),
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
         correctnessRCHash,

@@ -9,13 +9,13 @@
         <md-button type="submit" :disabled="startingSubmissionPhase">Start Submission Phase</md-button>
       </form>
     </div>
-    <div v-else-if="realPhase === 'betweenSubmissionAndClaim'">
-      <form @submit.prevent="startClaimPhase">
+    <div v-else-if="realPhase === 'betweenSubmissionAndJudgement'">
+      <form @submit.prevent="startJudgementPhase">
         <md-field>
           <label>Correctness.json</label>
           <md-file id="correctnessJSON" required/>
         </md-field>
-        <md-button type="submit" :disabled="startingClaimPhase">Start Claim Phase</md-button>
+        <md-button type="submit" :disabled="startingJudgementPhase">Start Judgement Phase</md-button>
       </form>
     </div>
     <div v-else>
@@ -35,11 +35,11 @@ export default {
       phase: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
-      claimPhaseFinishedAt: null,
+      judgementPhaseFinishedAt: null,
       timedrift: null,
       passphrase: '',
       startingSubmissionPhase: false,
-      startingClaimPhase: false
+      startingJudgementPhase: false
     }
   },
   computed: {
@@ -49,7 +49,7 @@ export default {
         !this.phase ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
-        !this.claimPhaseFinishedAt ||
+        !this.judgementPhaseFinishedAt ||
         !this.timedrift
       ) return ''
 
@@ -60,10 +60,10 @@ export default {
       }
       if (this.phase.eq(this.$web3.utils.toBN(1))) {
         if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt)) return 'submission'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndClaim'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndJudgement'
         return 'abnormalTermination'
       }
-      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPhaseFinishedAt)) return 'claim'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.judgementPhaseFinishedAt)) return 'judgement'
       return 'normalTermination'
     }
   },
@@ -89,7 +89,7 @@ export default {
         this.setPhase(),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
-        this.setClaimPhaseFinishedAt(),
+        this.setJudgementPhaseFinishedAt(),
         this.setTimedrift(),
         this.setPageName()
       ])
@@ -118,8 +118,8 @@ export default {
     async setSubmissionPhaseFinishedAt () {
       this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
     },
-    async setClaimPhaseFinishedAt () {
-      this.claimPhaseFinishedAt = await this.contest.claimPhaseFinishedAt()
+    async setJudgementPhaseFinishedAt () {
+      this.judgementPhaseFinishedAt = await this.contest.judgementPhaseFinishedAt()
     },
     async setTimedrift () {
       this.timedrift = await this.contest.timedrift()
@@ -145,8 +145,8 @@ export default {
 
       this.startingSubmissionPhase = false
     },
-    async startClaimPhase () {
-      this.startingClaimPhase = true
+    async startJudgementPhase () {
+      this.startingJudgementPhase = true
 
       const accounts = await this.$web3.eth.getAccounts()
 
@@ -155,9 +155,9 @@ export default {
       Correctness.setProvider(this.$web3.currentProvider)
       const correctness = await Correctness.new({ from: accounts[0] })
 
-      await this.contest.startClaimPhase(correctness.address, { from: accounts[0] })
+      await this.contest.startJudgementPhase(correctness.address, { from: accounts[0] })
 
-      this.startingClaimPhase = false
+      this.startingJudgementPhase = false
     }
   }
 }

@@ -24,7 +24,7 @@ contract ContestsManager {
     uint organizerDeposit,
     uint announcementPhaseFinishedAt,
     uint submissionPhaseFinishedAt,
-    uint claimPhaseFinishedAt,
+    uint judgementPhaseFinishedAt,
     string calldata cid,
     bytes32 passphraseHash,
     bytes32 correctnessRCHash
@@ -34,7 +34,7 @@ contract ContestsManager {
       organizerDeposit,
       announcementPhaseFinishedAt,
       submissionPhaseFinishedAt,
-      claimPhaseFinishedAt,
+      judgementPhaseFinishedAt,
       passphraseHash,
       correctnessRCHash
     );
