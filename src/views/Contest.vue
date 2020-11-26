@@ -12,7 +12,7 @@
           <label>Answer.json</label>
           <md-file id="answerJSONToSubmit" required/>
         </md-field>
-        <md-button type="submit" :disabled="!encryptedPresubmissionTesterCC || !passphrase || submitting">Submit</md-button>
+        <md-button type="submit" :disabled="!encryptedLocalCorrectnessCC || !passphrase || submitting">Submit</md-button>
       </form>
     </div>
     <div v-else-if="realPhase === 'claim'">
@@ -45,7 +45,7 @@ export default {
       timedrift: null,
       winner: '',
       encryptedDescription: '',
-      encryptedPresubmissionTesterCC: '',
+      encryptedLocalCorrectnessCC: '',
       passphrase: '',
       submitting: false,
       claiming: false
@@ -110,7 +110,7 @@ export default {
         this.setClaimPhaseFinishedAt(),
         this.setTimedrift(),
         this.setWinner(),
-        this.setPageNameAndEncryptedDescriptionAndEncryptedPresubmissionTesterCC()
+        this.setPageNameAndEncryptedDescriptionAndEncryptedLocalCorrectnessCC()
       ])
     },
     async setBlockTimestamp (blockHeader) {
@@ -143,14 +143,14 @@ export default {
     async setTimedrift () {
       this.timedrift = await this.contest.timedrift()
     },
-    async setPageNameAndEncryptedDescriptionAndEncryptedPresubmissionTesterCC () {
+    async setPageNameAndEncryptedDescriptionAndEncryptedLocalCorrectnessCC () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
       const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '0')[0].transactionHash)
       const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
       await Promise.all([
         this.setPageName(cid),
         this.setEncryptedDescription(cid),
-        this.setEncryptedPresubmissionTesterCC(cid)
+        this.setEncryptedLocalCorrectnessCC(cid)
       ])
     },
     async setPageName (cid) {
@@ -173,15 +173,15 @@ export default {
       }
       this.encryptedDescription = (new TextDecoder()).decode(encryptedDescription)
     },
-    async setEncryptedPresubmissionTesterCC (cid) {
-      let encryptedPresubmissionTesterCC = new Uint8Array()
-      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedPresubmissionTesterCC')) {
-        const newEncryptedPresubmissionTesterCC = new Uint8Array(encryptedPresubmissionTesterCC.length + chunk.length)
-        newEncryptedPresubmissionTesterCC.set(encryptedPresubmissionTesterCC)
-        newEncryptedPresubmissionTesterCC.set(chunk, encryptedPresubmissionTesterCC.length)
-        encryptedPresubmissionTesterCC = newEncryptedPresubmissionTesterCC
+    async setEncryptedLocalCorrectnessCC (cid) {
+      let encryptedLocalCorrectnessCC = new Uint8Array()
+      for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/encryptedLocalCorrectnessCC')) {
+        const newEncryptedLocalCorrectnessCC = new Uint8Array(encryptedLocalCorrectnessCC.length + chunk.length)
+        newEncryptedLocalCorrectnessCC.set(encryptedLocalCorrectnessCC)
+        newEncryptedLocalCorrectnessCC.set(chunk, encryptedLocalCorrectnessCC.length)
+        encryptedLocalCorrectnessCC = newEncryptedLocalCorrectnessCC
       }
-      this.encryptedPresubmissionTesterCC = (new TextDecoder()).decode(encryptedPresubmissionTesterCC)
+      this.encryptedLocalCorrectnessCC = (new TextDecoder()).decode(encryptedLocalCorrectnessCC)
     },
     async setWinner (event) {
       if (event) {
@@ -211,17 +211,17 @@ export default {
       const vm = new this.$EthereumJS.VM()
       await vm.stateManager.putAccount(address, account)
 
-      const presubmissionTesterCC = this.$CryptoJS.AES.decrypt(this.encryptedPresubmissionTesterCC, this.passphrase).toString(this.$CryptoJS.enc.Utf8)
-      const presubmissionTesterCTX = this.$EthereumJS.Transaction.fromTxData({
+      const localCorrectnessCC = this.$CryptoJS.AES.decrypt(this.encryptedLocalCorrectnessCC, this.passphrase).toString(this.$CryptoJS.enc.Utf8)
+      const localCorrectnessCTX = this.$EthereumJS.Transaction.fromTxData({
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: presubmissionTesterCC,
+        data: localCorrectnessCC,
         nonce: 0
       }).sign(privateKey)
-      const presubmissionTesterCR = await vm.runTx({ tx: presubmissionTesterCTX })
-      if (presubmissionTesterCR.execResult.exceptionError) throw presubmissionTesterCR.execResult.exceptionError
-      const presubmissionTesterAddress = presubmissionTesterCR.createdAddress
+      const localCorrectnessCR = await vm.runTx({ tx: localCorrectnessCTX })
+      if (localCorrectnessCR.execResult.exceptionError) throw localCorrectnessCR.execResult.exceptionError
+      const localCorrectnessAddress = localCorrectnessCR.createdAddress
 
       const answerJSON = await document.getElementById('answerJSONToSubmit').files[0].text()
       const answerCC = JSON.parse(answerJSON).bytecode
@@ -239,14 +239,14 @@ export default {
       const testInput1R = await vm.runCall({
         origin: address,
         caller: address,
-        to: presubmissionTesterAddress,
+        to: localCorrectnessAddress,
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ITester.abi[0], []).replace(/^0x/, ''), 'hex')
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[0], []).replace(/^0x/, ''), 'hex')
       })
       if (testInput1R.execResult.exceptionError) throw testInput1R.execResult.exceptionError
-      const testInput1RV = this.$web3.eth.abi.decodeParameters(this.$ITester.abi[0].outputs, testInput1R.execResult.returnValue.toString('hex'))[0]
+      const testInput1RV = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[0].outputs, testInput1R.execResult.returnValue.toString('hex'))[0]
 
       const testOutput1R = await vm.runCall({
         origin: address,
@@ -263,15 +263,15 @@ export default {
       const test1R = await vm.runCall({
         origin: address,
         caller: address,
-        to: presubmissionTesterAddress,
+        to: localCorrectnessAddress,
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ITester.abi[3], [testOutput1RV]).replace(/^0x/, ''), 'hex')
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[3], [testOutput1RV]).replace(/^0x/, ''), 'hex')
       })
       if (test1R.execResult.exceptionError) throw test1R.execResult.exceptionError
-      const test1RV = this.$web3.eth.abi.decodeParameters(this.$ITester.abi[3].outputs, test1R.execResult.returnValue.toString('hex'))[0]
-      if (!test1RV) throw new Error('Presubmission Test Failed')
+      const test1RV = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[3].outputs, test1R.execResult.returnValue.toString('hex'))[0]
+      if (!test1RV) throw new Error('Your answer is wrong')
 
       const answerRC = JSON.parse(answerJSON).deployedBytecode
       await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), accounts[1]), { from: accounts[1] })

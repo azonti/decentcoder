@@ -2,7 +2,7 @@
 pragma solidity ^0.7.3;
 
 import "./ContestsManager.sol";
-import "./ITester.sol";
+import "./ICorrectness.sol";
 import "./IAnswer.sol";
 
 contract Contest {
@@ -98,13 +98,13 @@ contract Contest {
 
   bytes32 private immutable passphraseHash;
 
-  bytes32 private immutable postclaimTesterRCHash;
+  bytes32 private immutable correctnessRCHash;
 
   mapping(address => uint) public submissionTimestamp;
 
   mapping(address => bytes32) private answerRCHashAddressHash;
 
-  ITester private postclaimTester;
+  ICorrectness private correctness;
 
   address public winner;
   event WinnerChanged(address winner);
@@ -116,7 +116,7 @@ contract Contest {
     uint _submissionPhaseFinishedAt,
     uint _claimPhaseFinishedAt,
     bytes32 _passphraseHash,
-    bytes32 _postclaimTesterRCHash
+    bytes32 _correctnessRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
 
@@ -140,7 +140,7 @@ contract Contest {
 
     passphraseHash = _passphraseHash;
 
-    postclaimTesterRCHash = _postclaimTesterRCHash;
+    correctnessRCHash = _correctnessRCHash;
 
     submissionTimestamp[_organizer] = type(uint).max;
 
@@ -176,7 +176,7 @@ contract Contest {
   }
 
   function startClaimPhase(
-    ITester _postclaimTester
+    ICorrectness _correctness
   )
   external
   onlyBy(organizer)
@@ -184,15 +184,15 @@ contract Contest {
   onlyAfter(submissionPhaseFinishedAt)
   onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
-    bytes32 _postclaimTesterRCHash = getRCHash(address(_postclaimTester));
-    require(_postclaimTesterRCHash == postclaimTesterRCHash, "The hashes do not match");
-    bytes memory _postclaimTesterRC = getRC(address(_postclaimTester));
-    require(isRCPureAndStandalone(_postclaimTesterRC), "The postclaim tester is non-pure or non-standalone");
+    bytes32 _correctnessRCHash = getRCHash(address(_correctness));
+    require(_correctnessRCHash == correctnessRCHash, "The hashes do not match");
+    bytes memory _correctnessRC = getRC(address(_correctness));
+    require(isRCPureAndStandalone(_correctnessRC), "The correctness is non-pure or non-standalone");
 
     phase = Phase.Claim;
     emit PhaseChanged(Phase.Claim);
 
-    postclaimTester = _postclaimTester;
+    correctness = _correctness;
   }
 
   function claim(
@@ -209,9 +209,9 @@ contract Contest {
     bytes memory answerRC = getRC(address(answer));
     require(isRCPureAndStandalone(answerRC), "The answer is non-pure or non-standalone");
 
-    require(postclaimTester.isOutput1Correct(answer.answer(postclaimTester.input1())), "Your answer is wrong");
-    require(postclaimTester.isOutput2Correct(answer.answer(postclaimTester.input2())), "Your answer is wrong");
-    require(postclaimTester.isOutput3Correct(answer.answer(postclaimTester.input3())), "Your answer is wrong");
+    require(correctness.isOutput1Correct(answer.answer(correctness.input1())), "Your answer is wrong");
+    require(correctness.isOutput2Correct(answer.answer(correctness.input2())), "Your answer is wrong");
+    require(correctness.isOutput3Correct(answer.answer(correctness.input3())), "Your answer is wrong");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);

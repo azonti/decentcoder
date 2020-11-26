@@ -29,12 +29,12 @@
       <md-textarea v-model="description"></md-textarea>
     </md-field>
     <md-field>
-      <label>PresubmissionTester.json</label>
-      <md-file id="presubmissionTesterJSON" required/>
+      <label>LocalCorrectness.json</label>
+      <md-file id="localCorrectnessJSON" required/>
     </md-field>
     <md-field>
-      <label>PostclaimTester.json</label>
-      <md-file id="postclaimTesterJSON" required/>
+      <label>Correctness.json</label>
+      <md-file id="correctnessJSON" required/>
     </md-field>
     <md-field>
       <label>Passphrase (Keep It in Mind!)</label>
@@ -71,10 +71,10 @@ export default {
       const accounts = await this.$web3.eth.getAccounts()
 
       const [
-        postclaimTesterRCHash,
+        correctnessRCHash,
         cid
       ] = await Promise.all([
-        this.getPostclaimTesterRCHashToCreateAndPushNewContest(),
+        this.getCorrectnessRCHashToCreateAndPushNewContest(),
         this.getCIDToCreateAndPushNewContest()
       ])
       const result = await this.contestsManager.createAndPushNewContest(
@@ -84,7 +84,7 @@ export default {
         this.$dayjs(this.claimPhaseFinishedAtDTL).unix(),
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
-        postclaimTesterRCHash,
+        correctnessRCHash,
         {
           from: accounts[0],
           value: this.$web3.utils.toBN(this.$web3.utils.toWei(this.organizerDepositEther)).add(this.$web3.utils.toBN(this.$web3.utils.toWei(this.prizeEther)))
@@ -95,10 +95,10 @@ export default {
 
       this.creating = false
     },
-    async getPostclaimTesterRCHashToCreateAndPushNewContest () {
-      const postclaimTesterJSON = await document.getElementById('postclaimTesterJSON').files[0].text()
-      const postclaimTesterRC = JSON.parse(postclaimTesterJSON).deployedBytecode
-      return this.$web3.utils.soliditySha3(postclaimTesterRC)
+    async getCorrectnessRCHashToCreateAndPushNewContest () {
+      const correctnessJSON = await document.getElementById('correctnessJSON').files[0].text()
+      const correctnessRC = JSON.parse(correctnessJSON).deployedBytecode
+      return this.$web3.utils.soliditySha3(correctnessRC)
     },
     async getCIDToCreateAndPushNewContest () {
       const nameFileObject = {
@@ -112,15 +112,15 @@ export default {
         content: encryptedDescription
       }
 
-      const presubmissionTesterJSON = await document.getElementById('presubmissionTesterJSON').files[0].text()
-      const presubmissionTesterCC = JSON.parse(presubmissionTesterJSON).bytecode
-      const encryptedPresubmissionTesterCC = this.$CryptoJS.AES.encrypt(presubmissionTesterCC, this.passphrase).toString()
-      const encryptedPresubmissionTesterCCFileObject = {
-        path: 'tmp/encryptedPresubmissionTesterCC',
-        content: encryptedPresubmissionTesterCC
+      const localCorrectnessJSON = await document.getElementById('localCorrectnessJSON').files[0].text()
+      const localCorrectnessCC = JSON.parse(localCorrectnessJSON).bytecode
+      const encryptedLocalCorrectnessCC = this.$CryptoJS.AES.encrypt(localCorrectnessCC, this.passphrase).toString()
+      const encryptedLocalCorrectnessCCFileObject = {
+        path: 'tmp/encryptedLocalCorrectnessCC',
+        content: encryptedLocalCorrectnessCC
       }
 
-      for await (const unixFSEntry of this.$ipfs.addAll([nameFileObject, encryptedDescriptionFileObject, encryptedPresubmissionTesterCCFileObject])) {
+      for await (const unixFSEntry of this.$ipfs.addAll([nameFileObject, encryptedDescriptionFileObject, encryptedLocalCorrectnessCCFileObject])) {
         if (unixFSEntry.path === 'tmp') {
           return unixFSEntry.cid.toString()
         }

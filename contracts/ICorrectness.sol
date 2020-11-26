@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.3;
 
-interface ITester {
+interface ICorrectness {
   function input1() external pure returns (bytes memory _input1);
   function input2() external pure returns (bytes memory _input2);
   function input3() external pure returns (bytes memory _input3);

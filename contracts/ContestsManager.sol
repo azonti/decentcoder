@@ -27,7 +27,7 @@ contract ContestsManager {
     uint claimPhaseFinishedAt,
     string calldata cid,
     bytes32 passphraseHash,
-    bytes32 postclaimTesterRCHash
+    bytes32 correctnessRCHash
   ) external payable {
     Contest newContest = new Contest{value: msg.value}(
       msg.sender,
@@ -36,7 +36,7 @@ contract ContestsManager {
       submissionPhaseFinishedAt,
       claimPhaseFinishedAt,
       passphraseHash,
-      postclaimTesterRCHash
+      correctnessRCHash
     );
 
     nContests++;

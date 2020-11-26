@@ -1,7 +1,7 @@
 import contract from '@truffle/contract'
 import ContestsManagerJSON from '@/../build/contracts/ContestsManager.json'
 import ContestJSON from '@/../build/contracts/Contest.json'
-import ITesterJSON from '@/../build/contracts/ITester.json'
+import ICorrectnessJSON from '@/../build/contracts/ICorrectness.json'
 import IAnswerJSON from '@/../build/contracts/IAnswer.json'
 
 const plugin = {
@@ -11,7 +11,7 @@ const plugin = {
     Vue.prototype.$ContestsManager.setProvider(Vue.prototype.$web3.currentProvider)
     Vue.prototype.$Contest = contract(ContestJSON)
     Vue.prototype.$Contest.setProvider(Vue.prototype.$web3.currentProvider)
-    Vue.prototype.$ITester = contract(ITesterJSON)
+    Vue.prototype.$ICorrectness = contract(ICorrectnessJSON)
     Vue.prototype.$IAnswer = contract(IAnswerJSON)
   }
 }

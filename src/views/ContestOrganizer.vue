@@ -12,8 +12,8 @@
     <div v-else-if="realPhase === 'betweenSubmissionAndClaim'">
       <form @submit.prevent="startClaimPhase">
         <md-field>
-          <label>PostclaimTester.json</label>
-          <md-file id="postclaimTesterJSON" required/>
+          <label>Correctness.json</label>
+          <md-file id="correctnessJSON" required/>
         </md-field>
         <md-button type="submit" :disabled="startingClaimPhase">Start Claim Phase</md-button>
       </form>
@@ -150,12 +150,12 @@ export default {
 
       const accounts = await this.$web3.eth.getAccounts()
 
-      const postclaimTesterJSON = await document.getElementById('postclaimTesterJSON').files[0].text()
-      const PostclaimTester = this.$contract(JSON.parse(postclaimTesterJSON))
-      PostclaimTester.setProvider(this.$web3.currentProvider)
-      const postclaimTester = await PostclaimTester.new({ from: accounts[0] })
+      const correctnessJSON = await document.getElementById('correctnessJSON').files[0].text()
+      const Correctness = this.$contract(JSON.parse(correctnessJSON))
+      Correctness.setProvider(this.$web3.currentProvider)
+      const correctness = await Correctness.new({ from: accounts[0] })
 
-      await this.contest.startClaimPhase(postclaimTester.address, { from: accounts[0] })
+      await this.contest.startClaimPhase(correctness.address, { from: accounts[0] })
 
       this.startingClaimPhase = false
     }
