@@ -44,20 +44,20 @@ contract Contest {
 
 
 
-  function getRC(address a) internal returns (bytes memory rc) {
+  function getRC(address a) internal view returns (bytes memory rc) {
     uint rcSize;
     assembly { rcSize := extcodesize(a) }
     rc = new bytes(rcSize);
     assembly { extcodecopy(a, add(rc, 0x20), 0, rcSize) }
   }
 
-  function getRCHash(address a) internal returns (bytes32) {
+  function getRCHash(address a) internal view returns (bytes32) {
     bytes32 rcHash;
     assembly { rcHash := extcodehash(a) }
     return rcHash;
   }
 
-  function isRCPureAndStandalone(bytes memory rc) internal returns (bool) {
+  function isRCPureAndStandalone(bytes memory rc) internal pure returns (bool) {
     bool code = true;
     for(uint i = 0; i < rc.length; i++) {
       if (code) {
@@ -184,10 +184,8 @@ contract Contest {
   onlyAfter(submissionPhaseFinishedAt)
   onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
-    bytes32 _correctnessRCHash = getRCHash(address(_correctness));
-    require(_correctnessRCHash == correctnessRCHash, "The hashes do not match");
-    bytes memory _correctnessRC = getRC(address(_correctness));
-    require(isRCPureAndStandalone(_correctnessRC), "The correctness is non-pure or non-standalone");
+    require(getRCHash(address(_correctness)) == correctnessRCHash, "The hashes do not match");
+    require(isRCPureAndStandalone(getRC(address(_correctness))), "The correctness is non-pure or non-standalone");
 
     phase = Phase.Judgement;
     emit PhaseChanged(Phase.Judgement);
@@ -204,10 +202,8 @@ contract Contest {
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
 
-    bytes32 answerRCHash = getRCHash(address(answer));
-    require(keccak256(abi.encodePacked(answerRCHash, msg.sender)) == answerRCHashAddressHash[msg.sender], "The hashes do not match");
-    bytes memory answerRC = getRC(address(answer));
-    require(isRCPureAndStandalone(answerRC), "The answer is non-pure or non-standalone");
+    require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "The hashes do not match");
+    require(isRCPureAndStandalone(getRC(address(answer))), "The answer is non-pure or non-standalone");
 
     require(correctness.isOutput1Correct(answer.answer(correctness.input1())), "Your answer is wrong");
     require(correctness.isOutput2Correct(answer.answer(correctness.input2())), "Your answer is wrong");
