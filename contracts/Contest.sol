@@ -51,6 +51,12 @@ contract Contest {
     assembly { extcodecopy(a, add(rc, 0x20), 0, rcSize) }
   }
 
+  function getRCHash(address a) internal returns (bytes32) {
+    bytes32 rcHash;
+    assembly { rcHash := extcodehash(a) }
+    return rcHash;
+  }
+
   function isRCPureAndStandalone(bytes memory rc) internal returns (bool) {
     bool code = true;
     for(uint i = 0; i < rc.length; i++) {
@@ -96,7 +102,7 @@ contract Contest {
 
   mapping(address => uint) public submissionTimestamp;
 
-  mapping(address => bytes32) private submissionRCAddressHash;
+  mapping(address => bytes32) private submissionRCHashAddressHash;
 
   ITester private postclaimTester;
 
@@ -158,7 +164,7 @@ contract Contest {
   }
 
   function submit(
-    bytes32 _submissionRCAddressHash
+    bytes32 _submissionRCHashAddressHash
   )
   external
   onlyDuring(Phase.Submission)
@@ -166,7 +172,7 @@ contract Contest {
   {
     submissionTimestamp[msg.sender] = block.timestamp;
 
-    submissionRCAddressHash[msg.sender] = _submissionRCAddressHash;
+    submissionRCHashAddressHash[msg.sender] = _submissionRCHashAddressHash;
   }
 
   function startClaimPhase(
@@ -178,9 +184,10 @@ contract Contest {
   onlyAfter(submissionPhaseFinishedAt)
   onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
-    bytes memory postclaimTesterRC = getRC(address(_postclaimTester));
-    require(keccak256(postclaimTesterRC) == postclaimTesterRCHash, "The hashes do not match");
-    require(isRCPureAndStandalone(postclaimTesterRC), "The postclaim tester is non-pure or non-standalone");
+    bytes32 _postclaimTesterRCHash = getRCHash(address(_postclaimTester));
+    require(_postclaimTesterRCHash == postclaimTesterRCHash, "The hashes do not match");
+    bytes memory _postclaimTesterRC = getRC(address(_postclaimTester));
+    require(isRCPureAndStandalone(_postclaimTesterRC), "The postclaim tester is non-pure or non-standalone");
 
     phase = Phase.Claim;
     emit PhaseChanged(Phase.Claim);
@@ -197,8 +204,9 @@ contract Contest {
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
 
+    bytes32 submissionRCHash = getRCHash(address(submission));
+    require(keccak256(abi.encodePacked(submissionRCHash, msg.sender)) == submissionRCHashAddressHash[msg.sender], "The hashes do not match");
     bytes memory submissionRC = getRC(address(submission));
-    require(keccak256(abi.encodePacked(submissionRC, msg.sender)) == submissionRCAddressHash[msg.sender], "The hashes do not match");
     require(isRCPureAndStandalone(submissionRC), "The submission is non-pure or non-standalone");
 
     require(postclaimTester.isOutput1Correct(submission.main(postclaimTester.input1())), "Your submission is wrong");

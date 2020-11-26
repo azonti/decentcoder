@@ -274,7 +274,7 @@ export default {
       if (!test1RV) throw new Error('Presubmission Test Failed')
 
       const submissionRC = JSON.parse(submissionJSON).deployedBytecode
-      await this.contest.submit(this.$web3.utils.soliditySha3(submissionRC, accounts[1]), { from: accounts[1] })
+      await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(submissionRC), accounts[1]), { from: accounts[1] })
 
       this.submitting = false
     },
