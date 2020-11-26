@@ -22,9 +22,9 @@ contract ContestsManager {
 
   function createAndPushNewContest(
     uint organizerDeposit,
-    uint announcementPeriodFinishedAt,
-    uint submissionPeriodFinishedAt,
-    uint claimPeriodFinishedAt,
+    uint announcementPhaseFinishedAt,
+    uint submissionPhaseFinishedAt,
+    uint claimPhaseFinishedAt,
     string calldata cid,
     bytes32 passphraseHash,
     bytes32 postclaimTesterRCHash
@@ -32,9 +32,9 @@ contract ContestsManager {
     Contest newContest = new Contest{value: msg.value}(
       msg.sender,
       organizerDeposit,
-      announcementPeriodFinishedAt,
-      submissionPeriodFinishedAt,
-      claimPeriodFinishedAt,
+      announcementPhaseFinishedAt,
+      submissionPhaseFinishedAt,
+      claimPhaseFinishedAt,
       passphraseHash,
       postclaimTesterRCHash
     );

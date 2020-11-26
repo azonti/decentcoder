@@ -40,8 +40,8 @@ export default {
       this.organizer = await this.contest.organizer()
     },
     async setName () {
-      const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
-      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '0')[0].transactionHash)
+      const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
+      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '0')[0].transactionHash)
       const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
       let name = new Uint8Array()
       for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {

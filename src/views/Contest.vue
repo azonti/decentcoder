@@ -6,7 +6,7 @@
     <div>
       {{ winner }}
     </div>
-    <div v-if="realPeriod === 'submission'">
+    <div v-if="realPhase === 'submission'">
       <form @submit.prevent="submit">
         <md-field>
           <label>Submission.json</label>
@@ -15,7 +15,7 @@
         <md-button type="submit" :disabled="!encryptedPresubmissionTesterCC || !passphrase || submitting">Submit</md-button>
       </form>
     </div>
-    <div v-else-if="realPeriod === 'claim'">
+    <div v-else-if="realPhase === 'claim'">
       <form @submit.prevent="claim">
         <md-field>
           <label>Submission.json</label>
@@ -25,7 +25,7 @@
       </form>
     </div>
     <div v-else>
-      {{ realPeriod }}
+      {{ realPhase }}
     </div>
   </div>
 </template>
@@ -38,10 +38,10 @@ export default {
       contest: null,
       blockTimestamp: 0,
       createdBlockNumber: 0,
-      period: null,
-      announcementPeriodFinishedAt: null,
-      submissionPeriodFinishedAt: null,
-      claimPeriodFinishedAt: null,
+      phase: null,
+      announcementPhaseFinishedAt: null,
+      submissionPhaseFinishedAt: null,
+      claimPhaseFinishedAt: null,
       timedrift: null,
       winner: '',
       encryptedDescription: '',
@@ -52,27 +52,27 @@ export default {
     }
   },
   computed: {
-    realPeriod () {
+    realPhase () {
       if (
         !this.blockTimestamp ||
-        !this.period ||
-        !this.announcementPeriodFinishedAt ||
-        !this.submissionPeriodFinishedAt ||
-        !this.claimPeriodFinishedAt ||
+        !this.phase ||
+        !this.announcementPhaseFinishedAt ||
+        !this.submissionPhaseFinishedAt ||
+        !this.claimPhaseFinishedAt ||
         !this.timedrift
       ) return ''
 
-      if (this.period.eq(this.$web3.utils.toBN(0))) {
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinishedAt)) return 'announcement'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinishedAt.add(this.timedrift))) return 'betweenAnnouncementAndSubmission'
+      if (this.phase.eq(this.$web3.utils.toBN(0))) {
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPhaseFinishedAt)) return 'announcement'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPhaseFinishedAt.add(this.timedrift))) return 'betweenAnnouncementAndSubmission'
         return 'abnormalTermination'
       }
-      if (this.period.eq(this.$web3.utils.toBN(1))) {
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinishedAt)) return 'submission'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndClaim'
+      if (this.phase.eq(this.$web3.utils.toBN(1))) {
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt)) return 'submission'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndClaim'
         return 'abnormalTermination'
       }
-      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPeriodFinishedAt)) return 'claim'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPhaseFinishedAt)) return 'claim'
       return 'normalTermination'
     },
     description () {
@@ -99,15 +99,15 @@ export default {
       await this.setCreatedBlockNumber()
 
       this.$web3.eth.subscribe('newBlockHeaders').on('data', this.setBlockTimestamp)
-      this.contest.PeriodChanged().on('data', event => this.setPeriod(event).then(this.setPassphrase))
+      this.contest.PhaseChanged().on('data', event => this.setPhase(event).then(this.setPassphrase))
       this.contest.WinnerChanged().on('data', this.setWinner)
 
       await Promise.all([
         this.setBlockTimestamp(),
-        this.setPeriod().then(this.setPassphrase),
-        this.setAnnouncementPeriodFinishedAt(),
-        this.setSubmissionPeriodFinishedAt(),
-        this.setClaimPeriodFinishedAt(),
+        this.setPhase().then(this.setPassphrase),
+        this.setAnnouncementPhaseFinishedAt(),
+        this.setSubmissionPhaseFinishedAt(),
+        this.setClaimPhaseFinishedAt(),
         this.setTimedrift(),
         this.setWinner(),
         this.setPageNameAndEncryptedDescriptionAndEncryptedPresubmissionTesterCC()
@@ -124,28 +124,28 @@ export default {
     async setCreatedBlockNumber () {
       this.createdBlockNumber = await this.contest.createdBlockNumber()
     },
-    async setPeriod (event) {
+    async setPhase (event) {
       if (event) {
-        this.period = this.$web3.utils.toBN(event.returnValues.period)
+        this.phase = this.$web3.utils.toBN(event.returnValues.phase)
       } else {
-        this.period = await this.contest.period()
+        this.phase = await this.contest.phase()
       }
     },
-    async setAnnouncementPeriodFinishedAt () {
-      this.announcementPeriodFinishedAt = await this.contest.announcementPeriodFinishedAt()
+    async setAnnouncementPhaseFinishedAt () {
+      this.announcementPhaseFinishedAt = await this.contest.announcementPhaseFinishedAt()
     },
-    async setSubmissionPeriodFinishedAt () {
-      this.submissionPeriodFinishedAt = await this.contest.submissionPeriodFinishedAt()
+    async setSubmissionPhaseFinishedAt () {
+      this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
     },
-    async setClaimPeriodFinishedAt () {
-      this.claimPeriodFinishedAt = await this.contest.claimPeriodFinishedAt()
+    async setClaimPhaseFinishedAt () {
+      this.claimPhaseFinishedAt = await this.contest.claimPhaseFinishedAt()
     },
     async setTimedrift () {
       this.timedrift = await this.contest.timedrift()
     },
     async setPageNameAndEncryptedDescriptionAndEncryptedPresubmissionTesterCC () {
-      const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
-      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '0')[0].transactionHash)
+      const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
+      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '0')[0].transactionHash)
       const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
       await Promise.all([
         this.setPageName(cid),
@@ -191,9 +191,9 @@ export default {
       }
     },
     async setPassphrase () {
-      if (this.period.gte(this.$web3.utils.toBN(1)) && !this.passphrase) {
-        const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
-        const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '1')[0].transactionHash)
+      if (this.phase.gte(this.$web3.utils.toBN(1)) && !this.passphrase) {
+        const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
+        const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '1')[0].transactionHash)
         this.passphrase = this.$web3.eth.abi.decodeParameters(this.$Contest.abi[14].inputs, transaction.input.substring(10)).passphrase
       }
     },

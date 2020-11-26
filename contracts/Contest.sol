@@ -14,17 +14,17 @@ contract Contest {
 
 
 
-  enum Period {
+  enum Phase {
     Announcement,
     Submission,
     Claim
   }
 
-  Period public period;
-  event PeriodChanged(Period period);
+  Phase public phase;
+  event PhaseChanged(Phase phase);
 
-  modifier onlyDuring(Period p) {
-    require(period == p, "Too early or late to call this function");
+  modifier onlyDuring(Phase p) {
+    require(phase == p, "Too early or late to call this function");
     _;
   }
 
@@ -84,9 +84,9 @@ contract Contest {
 
   uint public immutable organizerDeposit;
 
-  uint public immutable announcementPeriodFinishedAt;
-  uint public immutable submissionPeriodFinishedAt;
-  uint public immutable claimPeriodFinishedAt;
+  uint public immutable announcementPhaseFinishedAt;
+  uint public immutable submissionPhaseFinishedAt;
+  uint public immutable claimPhaseFinishedAt;
 
   uint public constant timedrift = 10 minutes;
 
@@ -106,19 +106,19 @@ contract Contest {
   constructor(
     address _organizer,
     uint _organizerDeposit,
-    uint _announcementPeriodFinishedAt,
-    uint _submissionPeriodFinishedAt,
-    uint _claimPeriodFinishedAt,
+    uint _announcementPhaseFinishedAt,
+    uint _submissionPhaseFinishedAt,
+    uint _claimPhaseFinishedAt,
     bytes32 _passphraseHash,
     bytes32 _postclaimTesterRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
 
-    require(_announcementPeriodFinishedAt + timedrift <= _submissionPeriodFinishedAt, "The submission period is too short");
-    require(_submissionPeriodFinishedAt + timedrift <= _claimPeriodFinishedAt, "The claim period is too short");
+    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "The submission phase is too short");
+    require(_submissionPhaseFinishedAt + timedrift <= _claimPhaseFinishedAt, "The claim phase is too short");
 
-    period = Period.Announcement;
-    emit PeriodChanged(Period.Announcement);
+    phase = Phase.Announcement;
+    emit PhaseChanged(Phase.Announcement);
 
     contestsManager = ContestsManager(msg.sender);
 
@@ -128,9 +128,9 @@ contract Contest {
 
     organizerDeposit = _organizerDeposit;
 
-    announcementPeriodFinishedAt = _announcementPeriodFinishedAt;
-    submissionPeriodFinishedAt = _submissionPeriodFinishedAt;
-    claimPeriodFinishedAt = _claimPeriodFinishedAt;
+    announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
+    submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
+    claimPhaseFinishedAt = _claimPhaseFinishedAt;
 
     passphraseHash = _passphraseHash;
 
@@ -142,48 +142,48 @@ contract Contest {
     emit WinnerChanged(_organizer);
   }
 
-  function startSubmissionPeriod(
+  function startSubmissionPhase(
     string memory passphrase
   )
   external
   onlyBy(organizer)
-  onlyDuring(Period.Announcement)
-  onlyAfter(announcementPeriodFinishedAt)
-  onlyBefore(announcementPeriodFinishedAt + timedrift)
+  onlyDuring(Phase.Announcement)
+  onlyAfter(announcementPhaseFinishedAt)
+  onlyBefore(announcementPhaseFinishedAt + timedrift)
   {
     require(keccak256(abi.encodePacked(passphrase)) == passphraseHash, "The hashes do not match");
 
-    period = Period.Submission;
-    emit PeriodChanged(Period.Submission);
+    phase = Phase.Submission;
+    emit PhaseChanged(Phase.Submission);
   }
 
   function submit(
     bytes32 _submissionRCAddressHash
   )
   external
-  onlyDuring(Period.Submission)
-  onlyBefore(submissionPeriodFinishedAt)
+  onlyDuring(Phase.Submission)
+  onlyBefore(submissionPhaseFinishedAt)
   {
     submissionTimestamp[msg.sender] = block.timestamp;
 
     submissionRCAddressHash[msg.sender] = _submissionRCAddressHash;
   }
 
-  function startClaimPeriod(
+  function startClaimPhase(
     ITester _postclaimTester
   )
   external
   onlyBy(organizer)
-  onlyDuring(Period.Submission)
-  onlyAfter(submissionPeriodFinishedAt)
-  onlyBefore(submissionPeriodFinishedAt + timedrift)
+  onlyDuring(Phase.Submission)
+  onlyAfter(submissionPhaseFinishedAt)
+  onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
     bytes memory postclaimTesterRC = getRC(address(_postclaimTester));
     require(keccak256(postclaimTesterRC) == postclaimTesterRCHash, "The hashes do not match");
     require(isRCPureAndStandalone(postclaimTesterRC), "The postclaim tester is non-pure or non-standalone");
 
-    period = Period.Claim;
-    emit PeriodChanged(Period.Claim);
+    phase = Phase.Claim;
+    emit PhaseChanged(Phase.Claim);
 
     postclaimTester = _postclaimTester;
   }
@@ -192,8 +192,8 @@ contract Contest {
     ISubmission submission
   )
   external
-  onlyDuring(Period.Claim)
-  onlyBefore(claimPeriodFinishedAt)
+  onlyDuring(Phase.Claim)
+  onlyBefore(claimPhaseFinishedAt)
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
 
@@ -211,8 +211,8 @@ contract Contest {
 
   function terminateNormally()
   external
-  onlyDuring(Period.Claim)
-  onlyAfter(claimPeriodFinishedAt)
+  onlyDuring(Phase.Claim)
+  onlyAfter(claimPhaseFinishedAt)
   {
     contestsManager.removeMe();
 
@@ -226,11 +226,11 @@ contract Contest {
   {
     require(
       (
-        block.timestamp > announcementPeriodFinishedAt + timedrift &&
-        period == Period.Announcement
+        block.timestamp > announcementPhaseFinishedAt + timedrift &&
+        phase == Phase.Announcement
       ) || (
-        block.timestamp > submissionPeriodFinishedAt + timedrift &&
-        period == Period.Submission
+        block.timestamp > submissionPhaseFinishedAt + timedrift &&
+        phase == Phase.Submission
       ),
       "The organizer is honest"
     );

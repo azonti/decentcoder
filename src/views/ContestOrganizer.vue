@@ -1,25 +1,25 @@
 <template>
   <div>
-    <div v-if="realPeriod === 'betweenAnnouncementAndSubmission'">
-      <form @submit.prevent="startSubmissionPeriod">
+    <div v-if="realPhase === 'betweenAnnouncementAndSubmission'">
+      <form @submit.prevent="startSubmissionPhase">
         <md-field>
           <label>Passphrase</label>
           <md-input type="password" required v-model="passphrase"/>
         </md-field>
-        <md-button type="submit" :disabled="startingSubmissionPeriod">Start Submission Period</md-button>
+        <md-button type="submit" :disabled="startingSubmissionPhase">Start Submission Phase</md-button>
       </form>
     </div>
-    <div v-else-if="realPeriod === 'betweenSubmissionAndClaim'">
-      <form @submit.prevent="startClaimPeriod">
+    <div v-else-if="realPhase === 'betweenSubmissionAndClaim'">
+      <form @submit.prevent="startClaimPhase">
         <md-field>
           <label>PostclaimTester.json</label>
           <md-file id="postclaimTesterJSON" required/>
         </md-field>
-        <md-button type="submit" :disabled="startingClaimPeriod">Start Claim Period</md-button>
+        <md-button type="submit" :disabled="startingClaimPhase">Start Claim Phase</md-button>
       </form>
     </div>
     <div v-else>
-      {{ realPeriod }}
+      {{ realPhase }}
     </div>
   </div>
 </template>
@@ -32,38 +32,38 @@ export default {
       contest: null,
       blockTimestamp: 0,
       createdBlockNumber: 0,
-      period: null,
-      announcementPeriodFinishedAt: null,
-      submissionPeriodFinishedAt: null,
-      claimPeriodFinishedAt: null,
+      phase: null,
+      announcementPhaseFinishedAt: null,
+      submissionPhaseFinishedAt: null,
+      claimPhaseFinishedAt: null,
       timedrift: null,
       passphrase: '',
-      startingSubmissionPeriod: false,
-      startingClaimPeriod: false
+      startingSubmissionPhase: false,
+      startingClaimPhase: false
     }
   },
   computed: {
-    realPeriod () {
+    realPhase () {
       if (
         !this.blockTimestamp ||
-        !this.period ||
-        !this.announcementPeriodFinishedAt ||
-        !this.submissionPeriodFinishedAt ||
-        !this.claimPeriodFinishedAt ||
+        !this.phase ||
+        !this.announcementPhaseFinishedAt ||
+        !this.submissionPhaseFinishedAt ||
+        !this.claimPhaseFinishedAt ||
         !this.timedrift
       ) return ''
 
-      if (this.period.eq(this.$web3.utils.toBN(0))) {
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinishedAt)) return 'announcement'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPeriodFinishedAt.add(this.timedrift))) return 'betweenAnnouncementAndSubmission'
+      if (this.phase.eq(this.$web3.utils.toBN(0))) {
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPhaseFinishedAt)) return 'announcement'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.announcementPhaseFinishedAt.add(this.timedrift))) return 'betweenAnnouncementAndSubmission'
         return 'abnormalTermination'
       }
-      if (this.period.eq(this.$web3.utils.toBN(1))) {
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinishedAt)) return 'submission'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPeriodFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndClaim'
+      if (this.phase.eq(this.$web3.utils.toBN(1))) {
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt)) return 'submission'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndClaim'
         return 'abnormalTermination'
       }
-      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPeriodFinishedAt)) return 'claim'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimPhaseFinishedAt)) return 'claim'
       return 'normalTermination'
     }
   },
@@ -82,14 +82,14 @@ export default {
       await this.setCreatedBlockNumber()
 
       this.$web3.eth.subscribe('newBlockHeaders').on('data', this.setBlockTimestamp)
-      this.contest.PeriodChanged().on('data', event => this.setPeriod(event))
+      this.contest.PhaseChanged().on('data', event => this.setPhase(event))
 
       await Promise.all([
         this.setBlockTimestamp(),
-        this.setPeriod(),
-        this.setAnnouncementPeriodFinishedAt(),
-        this.setSubmissionPeriodFinishedAt(),
-        this.setClaimPeriodFinishedAt(),
+        this.setPhase(),
+        this.setAnnouncementPhaseFinishedAt(),
+        this.setSubmissionPhaseFinishedAt(),
+        this.setClaimPhaseFinishedAt(),
         this.setTimedrift(),
         this.setPageName()
       ])
@@ -105,28 +105,28 @@ export default {
     async setCreatedBlockNumber () {
       this.createdBlockNumber = await this.contest.createdBlockNumber()
     },
-    async setPeriod (event) {
+    async setPhase (event) {
       if (event) {
-        this.period = this.$web3.utils.toBN(event.returnValues.period)
+        this.phase = this.$web3.utils.toBN(event.returnValues.phase)
       } else {
-        this.period = await this.contest.period()
+        this.phase = await this.contest.phase()
       }
     },
-    async setAnnouncementPeriodFinishedAt () {
-      this.announcementPeriodFinishedAt = await this.contest.announcementPeriodFinishedAt()
+    async setAnnouncementPhaseFinishedAt () {
+      this.announcementPhaseFinishedAt = await this.contest.announcementPhaseFinishedAt()
     },
-    async setSubmissionPeriodFinishedAt () {
-      this.submissionPeriodFinishedAt = await this.contest.submissionPeriodFinishedAt()
+    async setSubmissionPhaseFinishedAt () {
+      this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
     },
-    async setClaimPeriodFinishedAt () {
-      this.claimPeriodFinishedAt = await this.contest.claimPeriodFinishedAt()
+    async setClaimPhaseFinishedAt () {
+      this.claimPhaseFinishedAt = await this.contest.claimPhaseFinishedAt()
     },
     async setTimedrift () {
       this.timedrift = await this.contest.timedrift()
     },
     async setPageName () {
-      const events = await this.contest.getPastEvents('PeriodChanged', { fromBlock: this.createdBlockNumber })
-      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.period === '0')[0].transactionHash)
+      const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
+      const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '0')[0].transactionHash)
       const cid = this.$web3.eth.abi.decodeParameters(this.$ContestsManager.abi[2].inputs, transaction.input.substring(10)).cid
       let name = new Uint8Array()
       for await (const chunk of this.$ipfs.cat('/ipfs/' + cid + '/name')) {
@@ -137,16 +137,16 @@ export default {
       }
       this.$emit('set-page-name', (new TextDecoder()).decode(name) + ' Organizer')
     },
-    async startSubmissionPeriod () {
-      this.startingSubmissionPeriod = true
+    async startSubmissionPhase () {
+      this.startingSubmissionPhase = true
 
       const accounts = await this.$web3.eth.getAccounts()
-      await this.contest.startSubmissionPeriod(this.passphrase, { from: accounts[0] })
+      await this.contest.startSubmissionPhase(this.passphrase, { from: accounts[0] })
 
-      this.startingSubmissionPeriod = false
+      this.startingSubmissionPhase = false
     },
-    async startClaimPeriod () {
-      this.startingClaimPeriod = true
+    async startClaimPhase () {
+      this.startingClaimPhase = true
 
       const accounts = await this.$web3.eth.getAccounts()
 
@@ -155,9 +155,9 @@ export default {
       PostclaimTester.setProvider(this.$web3.currentProvider)
       const postclaimTester = await PostclaimTester.new({ from: accounts[0] })
 
-      await this.contest.startClaimPeriod(postclaimTester.address, { from: accounts[0] })
+      await this.contest.startClaimPhase(postclaimTester.address, { from: accounts[0] })
 
-      this.startingClaimPeriod = false
+      this.startingClaimPhase = false
     }
   }
 }

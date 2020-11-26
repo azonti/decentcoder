@@ -13,16 +13,16 @@
       <md-input type="number" step="0.000000000000000001" required v-model="prizeEther"/>
     </md-field>
     <md-field>
-      <label>Announcement Period Finished at</label>
-      <md-input type="datetime-local" required v-model="announcementPeriodFinishedAtDTL"/>
+      <label>Announcement Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="announcementPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Submission Period Finished at</label>
-      <md-input type="datetime-local" required v-model="submissionPeriodFinishedAtDTL"/>
+      <label>Submission Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="submissionPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Claim Period Finished at</label>
-      <md-input type="datetime-local" required v-model="claimPeriodFinishedAtDTL"/>
+      <label>Claim Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="claimPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
       <label>Description</label>
@@ -53,9 +53,9 @@ export default {
       name: '',
       organizerDepositEther: '',
       prizeEther: '',
-      announcementPeriodFinishedAtDTL: '',
-      submissionPeriodFinishedAtDTL: '',
-      claimPeriodFinishedAtDTL: '',
+      announcementPhaseFinishedAtDTL: '',
+      submissionPhaseFinishedAtDTL: '',
+      claimPhaseFinishedAtDTL: '',
       description: '',
       passphrase: '',
       creating: false
@@ -79,9 +79,9 @@ export default {
       ])
       const result = await this.contestsManager.createAndPushNewContest(
         this.$web3.utils.toWei(this.organizerDepositEther),
-        this.$dayjs(this.announcementPeriodFinishedAtDTL).unix(),
-        this.$dayjs(this.submissionPeriodFinishedAtDTL).unix(),
-        this.$dayjs(this.claimPeriodFinishedAtDTL).unix(),
+        this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.claimPhaseFinishedAtDTL).unix(),
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
         postclaimTesterRCHash,
