@@ -220,47 +220,66 @@ export default {
       if (answerCR.execResult.exceptionError) throw answerCR.execResult.exceptionError
       const answerAddress = answerCR.createdAddress
 
-      const testInput1R = await vm.runCall({
+      const testGasLimitR = await vm.runCall({
         origin: address,
         caller: address,
         to: localCorrectnessAddress,
         value: 0,
         gasLimit: this.$web3.utils.toBN('10000000000000000'),
         gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[0], []).replace(/^0x/, ''), 'hex')
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[6], []).replace(/^0x/, ''), 'hex')
       })
-      if (testInput1R.execResult.exceptionError) throw testInput1R.execResult.exceptionError
-      const testInput1RV = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[0].outputs, testInput1R.execResult.returnValue.toString('hex'))[0]
+      if (testGasLimitR.execResult.exceptionError) throw testGasLimitR.execResult.exceptionError
+      const testGasLimit = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[6].outputs, testGasLimitR.execResult.returnValue.toString('hex'))[0]
 
-      const testOutput1R = await vm.runCall({
-        origin: address,
-        caller: address,
-        to: answerAddress,
-        value: 0,
-        gasLimit: this.$web3.utils.toBN('10000000000000000'),
-        gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$IAnswer.abi[0], [testInput1RV]).replace(/^0x/, ''), 'hex')
-      })
-      if (testOutput1R.execResult.exceptionError) throw testOutput1R.execResult.exceptionError
-      const testOutput1RV = this.$web3.eth.abi.decodeParameters(this.$IAnswer.abi[0].outputs, testOutput1R.execResult.returnValue.toString('hex'))[0]
-
-      const test1R = await vm.runCall({
-        origin: address,
-        caller: address,
-        to: localCorrectnessAddress,
-        value: 0,
-        gasLimit: this.$web3.utils.toBN('10000000000000000'),
-        gasPrice: 1,
-        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[3], [testOutput1RV]).replace(/^0x/, ''), 'hex')
-      })
-      if (test1R.execResult.exceptionError) throw test1R.execResult.exceptionError
-      const test1RV = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[3].outputs, test1R.execResult.returnValue.toString('hex'))[0]
-      if (!test1RV) throw new Error('Your answer is wrong')
+      await Promise.all([
+        this.testLocallyToSubmit(address, vm, localCorrectnessAddress, answerAddress, testGasLimit, 1),
+        this.testLocallyToSubmit(address, vm, localCorrectnessAddress, answerAddress, testGasLimit, 2),
+        this.testLocallyToSubmit(address, vm, localCorrectnessAddress, answerAddress, testGasLimit, 3)
+      ])
 
       const answerRC = JSON.parse(answerJSON).deployedBytecode
       await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), accounts[1]), { from: accounts[1] })
 
       this.submitting = false
+    },
+    async testLocallyToSubmit (address, vm, localCorrectnessAddress, answerAddress, testGasLimit, testNumber) {
+      const testInputR = await vm.runCall({
+        origin: address,
+        caller: address,
+        to: localCorrectnessAddress,
+        value: 0,
+        gasLimit: this.$web3.utils.toBN('10000000000000000'),
+        gasPrice: 1,
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[testNumber - 1], []).replace(/^0x/, ''), 'hex')
+      })
+      if (testInputR.execResult.exceptionError) throw testInputR.execResult.exceptionError
+      const testInput = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[testNumber - 1].outputs, testInputR.execResult.returnValue.toString('hex'))[0]
+
+      const testOutputR = await vm.runCall({
+        origin: address,
+        caller: address,
+        to: answerAddress,
+        value: 0,
+        gasLimit: this.$web3.utils.toBN(testGasLimit),
+        gasPrice: 1,
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$IAnswer.abi[0], [testInput]).replace(/^0x/, ''), 'hex')
+      })
+      if (testOutputR.execResult.exceptionError) throw testOutputR.execResult.exceptionError
+      const testOutput = this.$web3.eth.abi.decodeParameters(this.$IAnswer.abi[0].outputs, testOutputR.execResult.returnValue.toString('hex'))[0]
+
+      const testR = await vm.runCall({
+        origin: address,
+        caller: address,
+        to: localCorrectnessAddress,
+        value: 0,
+        gasLimit: this.$web3.utils.toBN('10000000000000000'),
+        gasPrice: 1,
+        data: Buffer.from(this.$web3.eth.abi.encodeFunctionCall(this.$ICorrectness.abi[testNumber + 2], [testOutput]).replace(/^0x/, ''), 'hex')
+      })
+      if (testR.execResult.exceptionError) throw testR.execResult.exceptionError
+      const test = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[testNumber + 2].outputs, testR.execResult.returnValue.toString('hex'))[0]
+      if (!test) throw new Error('Your answer is wrong')
     },
     async judge () {
       this.judging = true

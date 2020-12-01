@@ -58,21 +58,28 @@ contract Contest {
   }
 
   function isRCPureAndStandalone(bytes memory rc) internal pure returns (bool) {
-    bool code = true;
+    bool maybeCode = true; bool maybeNonPureOrNonStandalone = false;
     for(uint i = 0; i < rc.length; i++) {
-      if (code) {
-        if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
-          i += uint8(rc[i]) - 0x5f;
-        } else if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a) {
+      if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
+        i += uint8(rc[i]) - 0x5f;
+      } else if (maybeCode) {
+        if (maybeNonPureOrNonStandalone && (uint8(rc[i]) == 0x00 || uint8(rc[i]) == 0x56 || uint8(rc[i]) == 0x57 || uint8(rc[i]) == 0xf3)) {
           return false;
+        }
+        if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a) {
+          maybeNonPureOrNonStandalone = true;
+        } else if (uint8(rc[i]) >= 0xa5 && uint8(rc[i]) <= 0xef) {
+          maybeCode = false;
+          maybeNonPureOrNonStandalone = false;
         } else if (uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
-          return false;
-        } else if (uint8(rc[i]) == 0xfe) {
-          code = false;
+          maybeNonPureOrNonStandalone = true;
+        } else if (uint8(rc[i]) >= 0xfd) {
+          maybeCode = false;
+          maybeNonPureOrNonStandalone = false;
         }
       } else {
         if (uint8(rc[i]) == 0x5b) {
-          code = true;
+          maybeCode = true;
         }
       }
     }
@@ -205,9 +212,10 @@ contract Contest {
     require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "The hashes do not match");
     require(isRCPureAndStandalone(getRC(address(answer))), "The answer is non-pure or non-standalone");
 
-    require(correctness.isOutput1Correct(answer.answer(correctness.input1())), "Your answer is wrong");
-    require(correctness.isOutput2Correct(answer.answer(correctness.input2())), "Your answer is wrong");
-    require(correctness.isOutput3Correct(answer.answer(correctness.input3())), "Your answer is wrong");
+    uint gasLimit = correctness.gasLimit();
+    require(correctness.isOutput1Correct(answer.answer{ gas: gasLimit }(correctness.input1())), "Your answer is wrong");
+    require(correctness.isOutput2Correct(answer.answer{ gas: gasLimit }(correctness.input2())), "Your answer is wrong");
+    require(correctness.isOutput3Correct(answer.answer{ gas: gasLimit }(correctness.input3())), "Your answer is wrong");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);

@@ -8,4 +8,5 @@ interface ICorrectness {
   function isOutput1Correct(bytes memory output1) external pure returns (bool);
   function isOutput2Correct(bytes memory output2) external pure returns (bool);
   function isOutput3Correct(bytes memory output3) external pure returns (bool);
+  function gasLimit() external pure returns (uint);
 }
