@@ -15,13 +15,13 @@
         <md-button type="submit" :disabled="!encryptedLocalCorrectnessCC || !passphrase || submitting">Submit</md-button>
       </form>
     </div>
-    <div v-else-if="realPhase === 'judgement'">
-      <form @submit.prevent="judge">
+    <div v-else-if="realPhase === 'publication'">
+      <form @submit.prevent="publish">
         <md-field>
           <label>Answer.json</label>
-          <md-file id="answerJSONToJudge" required/>
+          <md-file id="answerJSONToPublish" required/>
         </md-field>
-        <md-button type="submit" :disabled="judging">Judge</md-button>
+        <md-button type="submit" :disabled="!participantMinimumDeposit || publishing">Publish</md-button>
       </form>
     </div>
     <div v-else>
@@ -46,14 +46,18 @@ export default {
       phase: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
-      judgementPhaseFinishedAt: null,
+      publicationPhaseFinishedAt: null,
+      peerreviewingPhaseFinishedAt: null,
+      revisionPhaseFinishedAt: null,
+      claimingPhaseFinishedAt: null,
       timedrift: null,
+      participantMinimumDeposit: null,
       winner: '',
       encryptedContent: '',
       encryptedLocalCorrectnessCC: '',
       passphrase: '',
       submitting: false,
-      judging: false
+      publishing: false
     }
   },
   computed: {
@@ -63,7 +67,10 @@ export default {
         !this.phase ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
-        !this.judgementPhaseFinishedAt ||
+        !this.publicationPhaseFinishedAt ||
+        !this.peerreviewingPhaseFinishedAt ||
+        !this.revisionPhaseFinishedAt ||
+        !this.claimingPhaseFinishedAt ||
         !this.timedrift
       ) return ''
 
@@ -74,10 +81,13 @@ export default {
       }
       if (this.phase.eq(this.$web3.utils.toBN(1))) {
         if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt)) return 'submission'
-        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndJudgement'
+        if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndPublication'
         return 'abnormalTermination'
       }
-      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.judgementPhaseFinishedAt)) return 'judgement'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.publicationPhaseFinishedAt)) return 'publication'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.peerreviewingPhaseFinishedAt)) return 'peerreviewing'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.revisionPhaseFinishedAt)) return 'revision'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimingPhaseFinishedAt)) return 'claiming'
       return 'normalTermination'
     },
     content () {
@@ -112,8 +122,12 @@ export default {
         this.setPhase().then(this.setPassphrase),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
-        this.setJudgementPhaseFinishedAt(),
+        this.setPublicationPhaseFinishedAt(),
+        this.setPeerreviewingPhaseFinishedAt(),
+        this.setRevisionPhaseFinishedAt(),
+        this.setClaimingPhaseFinishedAt(),
         this.setTimedrift(),
+        this.setParticipantMinimumDeposit(),
         this.setWinner(),
         this.setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC()
       ])
@@ -142,11 +156,23 @@ export default {
     async setSubmissionPhaseFinishedAt () {
       this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
     },
-    async setJudgementPhaseFinishedAt () {
-      this.judgementPhaseFinishedAt = await this.contest.judgementPhaseFinishedAt()
+    async setPublicationPhaseFinishedAt () {
+      this.publicationPhaseFinishedAt = await this.contest.publicationPhaseFinishedAt()
+    },
+    async setPeerreviewingPhaseFinishedAt () {
+      this.peerreviewingPhaseFinishedAt = await this.contest.peerreviewingPhaseFinishedAt()
+    },
+    async setRevisionPhaseFinishedAt () {
+      this.revisionPhaseFinishedAt = await this.contest.revisionPhaseFinishedAt()
+    },
+    async setClaimingPhaseFinishedAt () {
+      this.claimingPhaseFinishedAt = await this.contest.claimingPhaseFinishedAt()
     },
     async setTimedrift () {
       this.timedrift = await this.contest.timedrift()
+    },
+    async setParticipantMinimumDeposit () {
+      this.participantMinimumDeposit = await this.contest.participantMinimumDeposit()
     },
     async setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
@@ -178,7 +204,7 @@ export default {
       if (this.phase.gte(this.$web3.utils.toBN(1)) && !this.passphrase) {
         const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
         const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '1')[0].transactionHash)
-        this.passphrase = this.$web3.eth.abi.decodeParameters(this.$Contest.abi[14].inputs, transaction.input.substring(10)).passphrase
+        this.passphrase = this.$web3.eth.abi.decodeParameters(this.$Contest.abi[24].inputs, transaction.input.substring(10)).passphrase
       }
     },
     async submit () {
@@ -239,7 +265,7 @@ export default {
       ])
 
       const answerRC = JSON.parse(answerJSON).deployedBytecode
-      await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), accounts[1]), { from: accounts[1] })
+      await Promise.all(accounts.slice(1).map(account => this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), account), { from: account })))
 
       this.submitting = false
     },
@@ -281,19 +307,19 @@ export default {
       const test = this.$web3.eth.abi.decodeParameters(this.$ICorrectness.abi[testNumber + 2].outputs, testR.execResult.returnValue.toString('hex'))[0]
       if (!test) throw new Error('Your answer is wrong')
     },
-    async judge () {
-      this.judging = true
+    async publish () {
+      this.publishing = true
 
       const accounts = await this.$web3.eth.getAccounts()
 
-      const answerJSON = await document.getElementById('answerJSONToJudge').files[0].text()
+      const answerJSON = await document.getElementById('answerJSONToPublish').files[0].text()
       const Answer = this.$contract(JSON.parse(answerJSON))
       Answer.setProvider(this.$web3.currentProvider)
       const answer = await Answer.new({ from: accounts[1] })
 
-      await this.contest.judge(answer.address, { from: accounts[1] })
+      await Promise.all(accounts.slice(1).map(account => this.contest.publish(answer.address, { from: account, value: this.participantMinimumDeposit })))
 
-      this.judging = false
+      this.publishing = false
     }
   }
 }

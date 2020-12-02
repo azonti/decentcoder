@@ -13,10 +13,10 @@ contract ContestsManager {
 
   function contests() external view returns (Contest[] memory _contests) {
     _contests = new Contest[](nContests);
-    Contest contest = nextContest[Contest(0)];
+    Contest _contest = nextContest[Contest(0)];
     for (uint i = 0; i < nContests; i++) {
-      _contests[i] = contest;
-      contest = nextContest[contest];
+      _contests[i] = _contest;
+      _contest = nextContest[_contest];
     }
   }
 
@@ -24,19 +24,27 @@ contract ContestsManager {
     uint organizerDeposit,
     uint announcementPhaseFinishedAt,
     uint submissionPhaseFinishedAt,
-    uint judgementPhaseFinishedAt,
+    uint publicationPhaseFinishedAt,
+    uint peerreviewingPhaseFinishedAt,
+    uint revisionPhaseFinishedAt,
+    uint claimingPhaseFinishedAt,
     string calldata cid,
     bytes32 passphraseHash,
-    bytes32 correctnessRCHash
+    bytes32 correctnessRCHash,
+    uint participantMinimumDeposit
   ) external payable {
     Contest newContest = new Contest{value: msg.value}(
       msg.sender,
       organizerDeposit,
       announcementPhaseFinishedAt,
       submissionPhaseFinishedAt,
-      judgementPhaseFinishedAt,
+      publicationPhaseFinishedAt,
+      peerreviewingPhaseFinishedAt,
+      revisionPhaseFinishedAt,
+      claimingPhaseFinishedAt,
       passphraseHash,
-      correctnessRCHash
+      correctnessRCHash,
+      participantMinimumDeposit
     );
 
     nContests++;
@@ -49,7 +57,7 @@ contract ContestsManager {
   }
 
   function removeMe() external {
-    require(registered[Contest(msg.sender)], "You have not been registered yet");
+    require(registered[Contest(msg.sender)], "NA");
 
     nContests--;
     delete registered[Contest(msg.sender)];

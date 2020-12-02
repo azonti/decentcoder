@@ -21,8 +21,20 @@
       <md-input type="datetime-local" required v-model="submissionPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
-      <label>Judgement Phase Finished at</label>
-      <md-input type="datetime-local" required v-model="judgementPhaseFinishedAtDTL"/>
+      <label>Publication Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="publicationPhaseFinishedAtDTL"/>
+    </md-field>
+    <md-field>
+      <label>Peer-reviewing Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="peerreviewingPhaseFinishedAtDTL"/>
+    </md-field>
+    <md-field>
+      <label>Revision Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="revisionPhaseFinishedAtDTL"/>
+    </md-field>
+    <md-field>
+      <label>Claiming Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="claimingPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
       <label>Content</label>
@@ -40,6 +52,10 @@
       <label>Passphrase (Keep It in Mind!)</label>
       <md-input type="password" required v-model="passphrase"/>
     </md-field>
+    <md-field>
+      <label>Participant's Minimum Deposit (in Ether)</label>
+      <md-input type="number" step="0.000000000000000001" required v-model="participantMinimumDepositEther"/>
+    </md-field>
     <md-button type="submit" :disabled="!contestsManager || creating">Create New Contest</md-button>
   </form>
 </template>
@@ -55,9 +71,13 @@ export default {
       prizeEther: '',
       announcementPhaseFinishedAtDTL: '',
       submissionPhaseFinishedAtDTL: '',
-      judgementPhaseFinishedAtDTL: '',
+      publicationPhaseFinishedAtDTL: '',
+      peerreviewingPhaseFinishedAtDTL: '',
+      revisionPhaseFinishedAtDTL: '',
+      claimingPhaseFinishedAtDTL: '',
       content: '',
       passphrase: '',
+      participantMinimumDepositEther: '',
       creating: false
     }
   },
@@ -81,10 +101,14 @@ export default {
         this.$web3.utils.toWei(this.organizerDepositEther),
         this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
         this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.judgementPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.publicationPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.peerreviewingPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.revisionPhaseFinishedAtDTL).unix(),
+        this.$dayjs(this.claimingPhaseFinishedAtDTL).unix(),
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
         correctnessRCHash,
+        this.$web3.utils.toWei(this.participantMinimumDepositEther),
         {
           from: accounts[0],
           value: this.$web3.utils.toBN(this.$web3.utils.toWei(this.organizerDepositEther)).add(this.$web3.utils.toBN(this.$web3.utils.toWei(this.prizeEther)))

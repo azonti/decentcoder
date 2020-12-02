@@ -2,12 +2,13 @@
 pragma solidity ^0.7.3;
 
 import "./ContestsManager.sol";
+import "./ContestsLibrary.sol";
 import "./ICorrectness.sol";
 import "./IAnswer.sol";
 
 contract Contest {
   modifier onlyBy(address a) {
-    require(msg.sender == a, "Not authorized to call this function");
+    require(msg.sender == a, "NA");
     _;
   }
 
@@ -17,14 +18,14 @@ contract Contest {
   enum Phase {
     Announcement,
     Submission,
-    Judgement
+    Publication
   }
 
   Phase public phase;
   event PhaseChanged(Phase phase);
 
   modifier onlyDuring(Phase p) {
-    require(phase == p, "Too early or late to call this function");
+    require(phase == p, "2EoL");
     _;
   }
 
@@ -32,58 +33,22 @@ contract Contest {
 
 
   modifier onlyAfter(uint t) {
-    require(block.timestamp > t, "Too early to call this function");
+    require(block.timestamp > t, "2E");
     _;
   }
 
   modifier onlyBefore(uint t) {
-    require(block.timestamp <= t, "Too late to call this function");
+    require(block.timestamp <= t, "2L");
     _;
   }
 
 
 
-
-  function getRC(address a) internal view returns (bytes memory rc) {
-    uint rcSize;
-    assembly { rcSize := extcodesize(a) }
-    rc = new bytes(rcSize);
-    assembly { extcodecopy(a, add(rc, 0x20), 0, rcSize) }
-  }
 
   function getRCHash(address a) internal view returns (bytes32) {
     bytes32 rcHash;
     assembly { rcHash := extcodehash(a) }
     return rcHash;
-  }
-
-  function isRCPureAndStandalone(bytes memory rc) internal pure returns (bool) {
-    bool maybeCode = true; bool maybeNonPureOrNonStandalone = false;
-    for(uint i = 0; i < rc.length; i++) {
-      if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
-        i += uint8(rc[i]) - 0x5f;
-      } else if (maybeCode) {
-        if (maybeNonPureOrNonStandalone && (uint8(rc[i]) == 0x00 || uint8(rc[i]) == 0x56 || uint8(rc[i]) == 0x57 || uint8(rc[i]) == 0xf3)) {
-          return false;
-        }
-        if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a) {
-          maybeNonPureOrNonStandalone = true;
-        } else if (uint8(rc[i]) >= 0xa5 && uint8(rc[i]) <= 0xef) {
-          maybeCode = false;
-          maybeNonPureOrNonStandalone = false;
-        } else if (uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
-          maybeNonPureOrNonStandalone = true;
-        } else if (uint8(rc[i]) >= 0xfd) {
-          maybeCode = false;
-          maybeNonPureOrNonStandalone = false;
-        }
-      } else {
-        if (uint8(rc[i]) == 0x5b) {
-          maybeCode = true;
-        }
-      }
-    }
-    return true;
   }
 
 
@@ -99,7 +64,10 @@ contract Contest {
 
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
-  uint public immutable judgementPhaseFinishedAt;
+  uint public immutable publicationPhaseFinishedAt;
+  uint public immutable peerreviewingPhaseFinishedAt;
+  uint public immutable revisionPhaseFinishedAt;
+  uint public immutable claimingPhaseFinishedAt;
 
   uint public constant timedrift = 10 minutes;
 
@@ -107,11 +75,29 @@ contract Contest {
 
   bytes32 private immutable correctnessRCHash;
 
+  uint public immutable participantMinimumDeposit;
+
   mapping(address => uint) public submissionTimestamp;
 
   mapping(address => bytes32) private answerRCHashAddressHash;
 
-  ICorrectness private correctness;
+  ICorrectness public correctness;
+
+  address[] private participants;
+
+  uint[] private deposits;
+
+  IAnswer[] private _answers; function answers() external view returns (IAnswer[] memory __answers) { __answers = _answers; }
+
+  bool[][] private isAnswerCorrects;
+
+  uint[] public isAnswerCorrectCount;
+
+  mapping(address => uint) public index;
+
+  uint public hash;
+
+  uint public constant nReviewers = 3;
 
   address public winner;
   event WinnerChanged(address winner);
@@ -121,14 +107,21 @@ contract Contest {
     uint _organizerDeposit,
     uint _announcementPhaseFinishedAt,
     uint _submissionPhaseFinishedAt,
-    uint _judgementPhaseFinishedAt,
+    uint _publicationPhaseFinishedAt,
+    uint _peerreviewingPhaseFinishedAt,
+    uint _revisionPhaseFinishedAt,
+    uint _claimingPhaseFinishedAt,
     bytes32 _passphraseHash,
-    bytes32 _correctnessRCHash
+    bytes32 _correctnessRCHash,
+    uint _participantMinimumDeposit
   ) payable {
-    require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
+    require(_organizerDeposit <= msg.value, "IA");
 
-    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "The submission phase is too short");
-    require(_submissionPhaseFinishedAt + timedrift <= _judgementPhaseFinishedAt, "The judgement phase is too short");
+    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "IA");
+    require(_submissionPhaseFinishedAt + timedrift <= _publicationPhaseFinishedAt, "IA");
+    require(_publicationPhaseFinishedAt <= _peerreviewingPhaseFinishedAt, "IA");
+    require(_peerreviewingPhaseFinishedAt <= _revisionPhaseFinishedAt, "IA");
+    require(_revisionPhaseFinishedAt <= _claimingPhaseFinishedAt, "IA");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
@@ -143,11 +136,16 @@ contract Contest {
 
     announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
     submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
-    judgementPhaseFinishedAt = _judgementPhaseFinishedAt;
+    publicationPhaseFinishedAt = _publicationPhaseFinishedAt;
+    peerreviewingPhaseFinishedAt = _peerreviewingPhaseFinishedAt;
+    revisionPhaseFinishedAt = _revisionPhaseFinishedAt;
+    claimingPhaseFinishedAt = _claimingPhaseFinishedAt;
 
     passphraseHash = _passphraseHash;
 
     correctnessRCHash = _correctnessRCHash;
+
+    participantMinimumDeposit = _participantMinimumDeposit;
 
     submissionTimestamp[_organizer] = type(uint).max;
 
@@ -164,7 +162,7 @@ contract Contest {
   onlyAfter(announcementPhaseFinishedAt)
   onlyBefore(announcementPhaseFinishedAt + timedrift)
   {
-    require(keccak256(abi.encodePacked(passphrase)) == passphraseHash, "The hashes do not match");
+    require(keccak256(abi.encodePacked(passphrase)) == passphraseHash, "IA");
 
     phase = Phase.Submission;
     emit PhaseChanged(Phase.Submission);
@@ -177,12 +175,14 @@ contract Contest {
   onlyDuring(Phase.Submission)
   onlyBefore(submissionPhaseFinishedAt)
   {
+    require(msg.sender != organizer, "NA");
+
     submissionTimestamp[msg.sender] = block.timestamp;
 
     answerRCHashAddressHash[msg.sender] = _answerRCHashAddressHash;
   }
 
-  function startJudgementPhase(
+  function startPublicationPhase(
     ICorrectness _correctness
   )
   external
@@ -191,31 +191,127 @@ contract Contest {
   onlyAfter(submissionPhaseFinishedAt)
   onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
-    require(getRCHash(address(_correctness)) == correctnessRCHash, "The hashes do not match");
-    require(isRCPureAndStandalone(getRC(address(_correctness))), "The correctness is non-pure or non-standalone");
+    require(getRCHash(address(_correctness)) == correctnessRCHash, "IA");
 
-    phase = Phase.Judgement;
-    emit PhaseChanged(Phase.Judgement);
+    phase = Phase.Publication;
+    emit PhaseChanged(Phase.Publication);
 
     correctness = _correctness;
   }
 
-  function judge(
-    IAnswer answer
+  function publish(
+    IAnswer _answer
+  )
+  payable
+  external
+  onlyDuring(Phase.Publication)
+  onlyBefore(publicationPhaseFinishedAt)
+  {
+    require(index[msg.sender] == 0, "NA");
+
+    require(msg.value >= participantMinimumDeposit, "IV");
+
+    require(keccak256(abi.encodePacked(getRCHash(address(_answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "IA");
+
+    participants.push(msg.sender);
+
+    deposits.push(msg.value);
+
+    _answers.push(_answer);
+
+    isAnswerCorrects.push();
+
+    isAnswerCorrectCount.push();
+
+    index[msg.sender] = participants.length;
+
+    hash = uint(blockhash(block.number - 1)) % participants.length;
+  }
+
+  function punish(
+    uint _0index,
+    uint m
   )
   external
-  onlyDuring(Phase.Judgement)
-  onlyBefore(judgementPhaseFinishedAt)
+  onlyDuring(Phase.Publication)
+  onlyAfter(publicationPhaseFinishedAt)
+  onlyBefore(peerreviewingPhaseFinishedAt)
   {
-    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
+    require(_answers[_0index] != IAnswer(0), "IA");
 
-    require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "The hashes do not match");
-    require(isRCPureAndStandalone(getRC(address(answer))), "The answer is non-pure or non-standalone");
+    require(!ContestsLibrary.isRCPureAndStandalone(address(_answers[_0index]), m), "IA");
 
-    uint gasLimit = correctness.gasLimit();
-    require(correctness.isOutput1Correct(answer.answer{ gas: gasLimit }(correctness.input1())), "Your answer is wrong");
-    require(correctness.isOutput2Correct(answer.answer{ gas: gasLimit }(correctness.input2())), "Your answer is wrong");
-    require(correctness.isOutput3Correct(answer.answer{ gas: gasLimit }(correctness.input3())), "Your answer is wrong");
+    _answers[_0index] = IAnswer(0);
+
+    msg.sender.transfer(deposits[_0index]);
+    deposits[_0index] = 0;
+  }
+
+  function peerreview(
+    bool[] memory isAnswerCorrect
+  )
+  external
+  onlyDuring(Phase.Publication)
+  onlyAfter(publicationPhaseFinishedAt)
+  onlyBefore(peerreviewingPhaseFinishedAt)
+  {
+    uint _0index = index[msg.sender] - 1;
+    require(isAnswerCorrects[_0index].length == 0, "NA");
+
+    for (uint i = 0; i < nReviewers; i++) {
+      isAnswerCorrects[_0index].push(isAnswerCorrect[i]);
+
+      if (isAnswerCorrect[i]) {
+        isAnswerCorrectCount[((_0index + hash) % participants.length + i) % participants.length]++;
+      }
+    }
+  }
+
+  function revise(
+    uint _0index
+  )
+  external
+  onlyDuring(Phase.Publication)
+  onlyAfter(peerreviewingPhaseFinishedAt)
+  onlyBefore(revisionPhaseFinishedAt)
+  {
+    require(_answers[_0index] != IAnswer(0), "IA");
+
+    bool isParticipantAnswerCorrect;
+    try ContestsLibrary.judge(correctness, _answers[_0index]) returns (bool _isParticipantAnswerCorrect) {
+      isParticipantAnswerCorrect = _isParticipantAnswerCorrect;
+    } catch {
+      isParticipantAnswerCorrect = false;
+    }
+
+    if (isParticipantAnswerCorrect) {
+      isAnswerCorrectCount[_0index] = type(uint).max;
+    } else {
+      isAnswerCorrectCount[_0index] = 0;
+    }
+
+    uint reward;
+    for (uint i = 0; i < nReviewers; i++) {
+      if (isParticipantAnswerCorrect != isAnswerCorrects[(participants.length + (participants.length + _0index - hash) % participants.length - i) % participants.length][i]) {
+        reward += deposits[(participants.length + (participants.length + _0index - hash) % participants.length - i) % participants.length];
+        deposits[(participants.length + (participants.length + _0index - hash) % participants.length - i) % participants.length] = 0;
+      }
+    }
+    msg.sender.transfer(reward);
+  }
+
+  function claim()
+  external
+  onlyDuring(Phase.Publication)
+  onlyAfter(revisionPhaseFinishedAt)
+  onlyBefore(claimingPhaseFinishedAt)
+  {
+    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
+
+    uint _0index = index[msg.sender] - 1;
+    require(_answers[_0index] != IAnswer(0), "NA");
+
+    require(isAnswerCorrectCount[_0index] > nReviewers / 2, "WA");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);
@@ -223,17 +319,21 @@ contract Contest {
 
   function terminateNormally()
   external
-  onlyDuring(Phase.Judgement)
-  onlyAfter(judgementPhaseFinishedAt)
+  onlyDuring(Phase.Publication)
+  onlyAfter(claimingPhaseFinishedAt)
   {
     contestsManager.removeMe();
 
     payable(organizer).transfer(organizerDeposit);
 
+    for (uint i = 0; i < participants.length; i++) {
+      payable(participants[i]).transfer(deposits[i]);
+    }
+
     selfdestruct(payable(winner));
   }
 
-  function terminateAbnormally()
+  function terminateAbnormally(uint m)
   external
   {
     require(
@@ -243,13 +343,20 @@ contract Contest {
       ) || (
         block.timestamp > submissionPhaseFinishedAt + timedrift &&
         phase == Phase.Submission
-      ),
-      "The organizer is honest"
+      ) || (
+        phase == Phase.Publication &&
+        block.timestamp <= peerreviewingPhaseFinishedAt &&
+        !ContestsLibrary.isRCPureAndStandalone(address(correctness), m)
+      )
     );
 
     contestsManager.removeMe();
 
     msg.sender.transfer(organizerDeposit);
+
+    for (uint i = 0; i < participants.length; i++) {
+      payable(participants[i]).transfer(deposits[i]);
+    }
 
     selfdestruct(payable(winner));
   }
