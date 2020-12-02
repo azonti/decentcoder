@@ -2,12 +2,13 @@
 pragma solidity ^0.7.3;
 
 import "./ContestsManager.sol";
+import "./ContestsLibrary.sol";
 import "./ICorrectness.sol";
 import "./IAnswer.sol";
 
 contract Contest {
   modifier onlyBy(address a) {
-    require(msg.sender == a, "Not authorized to call this function");
+    require(msg.sender == a, "NA");
     _;
   }
 
@@ -24,7 +25,7 @@ contract Contest {
   event PhaseChanged(Phase phase);
 
   modifier onlyDuring(Phase p) {
-    require(phase == p, "Too early or late to call this function");
+    require(phase == p, "2EoL");
     _;
   }
 
@@ -32,58 +33,22 @@ contract Contest {
 
 
   modifier onlyAfter(uint t) {
-    require(block.timestamp > t, "Too early to call this function");
+    require(block.timestamp > t, "2E");
     _;
   }
 
   modifier onlyBefore(uint t) {
-    require(block.timestamp <= t, "Too late to call this function");
+    require(block.timestamp <= t, "2L");
     _;
   }
 
 
 
-
-  function getRC(address a) internal view returns (bytes memory rc) {
-    uint rcSize;
-    assembly { rcSize := extcodesize(a) }
-    rc = new bytes(rcSize);
-    assembly { extcodecopy(a, add(rc, 0x20), 0, rcSize) }
-  }
 
   function getRCHash(address a) internal view returns (bytes32) {
     bytes32 rcHash;
     assembly { rcHash := extcodehash(a) }
     return rcHash;
-  }
-
-  function isRCPureAndStandalone(bytes memory rc) internal pure returns (bool) {
-    bool maybeCode = true; bool maybeNonPureOrNonStandalone = false;
-    for(uint i = 0; i < rc.length; i++) {
-      if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
-        i += uint8(rc[i]) - 0x5f;
-      } else if (maybeCode) {
-        if (maybeNonPureOrNonStandalone && (uint8(rc[i]) == 0x00 || uint8(rc[i]) == 0x56 || uint8(rc[i]) == 0x57 || uint8(rc[i]) == 0xf3)) {
-          return false;
-        }
-        if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a) {
-          maybeNonPureOrNonStandalone = true;
-        } else if (uint8(rc[i]) >= 0xa5 && uint8(rc[i]) <= 0xef) {
-          maybeCode = false;
-          maybeNonPureOrNonStandalone = false;
-        } else if (uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
-          maybeNonPureOrNonStandalone = true;
-        } else if (uint8(rc[i]) >= 0xfd) {
-          maybeCode = false;
-          maybeNonPureOrNonStandalone = false;
-        }
-      } else {
-        if (uint8(rc[i]) == 0x5b) {
-          maybeCode = true;
-        }
-      }
-    }
-    return true;
   }
 
 
@@ -125,10 +90,10 @@ contract Contest {
     bytes32 _passphraseHash,
     bytes32 _correctnessRCHash
   ) payable {
-    require(_organizerDeposit <= msg.value, "The organizer's deposit is invalid");
+    require(_organizerDeposit <= msg.value, "IA");
 
-    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "The submission phase is too short");
-    require(_submissionPhaseFinishedAt + timedrift <= _judgementPhaseFinishedAt, "The judgement phase is too short");
+    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "IA");
+    require(_submissionPhaseFinishedAt + timedrift <= _judgementPhaseFinishedAt, "IA");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
@@ -164,7 +129,7 @@ contract Contest {
   onlyAfter(announcementPhaseFinishedAt)
   onlyBefore(announcementPhaseFinishedAt + timedrift)
   {
-    require(keccak256(abi.encodePacked(passphrase)) == passphraseHash, "The hashes do not match");
+    require(keccak256(abi.encodePacked(passphrase)) == passphraseHash, "IA");
 
     phase = Phase.Submission;
     emit PhaseChanged(Phase.Submission);
@@ -177,6 +142,8 @@ contract Contest {
   onlyDuring(Phase.Submission)
   onlyBefore(submissionPhaseFinishedAt)
   {
+    require(msg.sender != organizer, "NA");
+
     submissionTimestamp[msg.sender] = block.timestamp;
 
     answerRCHashAddressHash[msg.sender] = _answerRCHashAddressHash;
@@ -191,8 +158,8 @@ contract Contest {
   onlyAfter(submissionPhaseFinishedAt)
   onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
-    require(getRCHash(address(_correctness)) == correctnessRCHash, "The hashes do not match");
-    require(isRCPureAndStandalone(getRC(address(_correctness))), "The correctness is non-pure or non-standalone");
+    require(getRCHash(address(_correctness)) == correctnessRCHash, "IA");
+    require(ContestsLibrary.isRCPureAndStandalone(address(_correctness)), "IA");
 
     phase = Phase.Judgement;
     emit PhaseChanged(Phase.Judgement);
@@ -207,15 +174,12 @@ contract Contest {
   onlyDuring(Phase.Judgement)
   onlyBefore(judgementPhaseFinishedAt)
   {
-    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "You cannot be the winner");
+    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
 
-    require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "The hashes do not match");
-    require(isRCPureAndStandalone(getRC(address(answer))), "The answer is non-pure or non-standalone");
+    require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "IA");
+    require(ContestsLibrary.isRCPureAndStandalone(address(answer)), "IA");
 
-    uint gasLimit = correctness.gasLimit();
-    require(correctness.isOutput1Correct(answer.answer{ gas: gasLimit }(correctness.input1())), "Your answer is wrong");
-    require(correctness.isOutput2Correct(answer.answer{ gas: gasLimit }(correctness.input2())), "Your answer is wrong");
-    require(correctness.isOutput3Correct(answer.answer{ gas: gasLimit }(correctness.input3())), "Your answer is wrong");
+    require(ContestsLibrary.judge(correctness, answer), "WA");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);
@@ -243,8 +207,7 @@ contract Contest {
       ) || (
         block.timestamp > submissionPhaseFinishedAt + timedrift &&
         phase == Phase.Submission
-      ),
-      "The organizer is honest"
+      )
     );
 
     contestsManager.removeMe();

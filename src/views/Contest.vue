@@ -239,7 +239,7 @@ export default {
       ])
 
       const answerRC = JSON.parse(answerJSON).deployedBytecode
-      await this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), accounts[1]), { from: accounts[1] })
+      await Promise.all(accounts.slice(1).map(account => this.contest.submit(this.$web3.utils.soliditySha3(this.$web3.utils.soliditySha3(answerRC), account), { from: account })))
 
       this.submitting = false
     },
@@ -291,7 +291,7 @@ export default {
       Answer.setProvider(this.$web3.currentProvider)
       const answer = await Answer.new({ from: accounts[1] })
 
-      await this.contest.judge(answer.address, { from: accounts[1] })
+      await Promise.all(accounts.slice(1).map(account => this.contest.judge(answer.address, { from: account })))
 
       this.judging = false
     }
