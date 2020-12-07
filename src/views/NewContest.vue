@@ -9,6 +9,10 @@
       <md-input type="number" step="0.000000000000000001" required v-model="organizerDepositEther"/>
     </md-field>
     <md-field>
+      <label>Participant's Deposit (in Ether)</label>
+      <md-input type="number" step="0.000000000000000001" required v-model="participantDepositEther"/>
+    </md-field>
+    <md-field>
       <label>Prize (in Ether)</label>
       <md-input type="number" step="0.000000000000000001" required v-model="prizeEther"/>
     </md-field>
@@ -56,10 +60,6 @@
       <label>Passphrase (Keep It in Mind!)</label>
       <md-input type="password" required v-model="passphrase"/>
     </md-field>
-    <md-field>
-      <label>Participant's Minimum Deposit (in Ether)</label>
-      <md-input type="number" step="0.000000000000000001" required v-model="participantMinimumDepositEther"/>
-    </md-field>
     <md-button type="submit" :disabled="!contestsManager || creating">Create New Contest</md-button>
   </form>
 </template>
@@ -82,7 +82,7 @@ export default {
       claimingPhaseFinishedAtDTL: '',
       content: '',
       passphrase: '',
-      participantMinimumDepositEther: '',
+      participantDepositEther: '',
       creating: false
     }
   },
@@ -104,6 +104,7 @@ export default {
       ])
       const result = await this.contestsManager.createAndPushNewContest(
         this.$web3.utils.toWei(this.organizerDepositEther),
+        this.$web3.utils.toWei(this.participantDepositEther),
         this.timedrift,
         this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
         this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
@@ -114,7 +115,6 @@ export default {
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
         correctnessRCHash,
-        this.$web3.utils.toWei(this.participantMinimumDepositEther),
         {
           from: accounts[0],
           value: this.$web3.utils.toBN(this.$web3.utils.toWei(this.organizerDepositEther)).add(this.$web3.utils.toBN(this.$web3.utils.toWei(this.prizeEther)))

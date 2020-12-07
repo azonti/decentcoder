@@ -22,6 +22,7 @@ contract ContestsManager {
 
   function createAndPushNewContest(
     uint organizerDeposit,
+    uint participantDeposit,
     uint timedrift,
     uint announcementPhaseFinishedAt,
     uint submissionPhaseFinishedAt,
@@ -31,12 +32,12 @@ contract ContestsManager {
     uint claimingPhaseFinishedAt,
     string calldata cid,
     bytes32 passphraseHash,
-    bytes32 correctnessRCHash,
-    uint participantMinimumDeposit
+    bytes32 correctnessRCHash
   ) external payable {
     Contest newContest = new Contest{value: msg.value}(
       msg.sender,
       organizerDeposit,
+      participantDeposit,
       timedrift,
       announcementPhaseFinishedAt,
       submissionPhaseFinishedAt,
@@ -45,8 +46,7 @@ contract ContestsManager {
       revisionPhaseFinishedAt,
       claimingPhaseFinishedAt,
       passphraseHash,
-      correctnessRCHash,
-      participantMinimumDeposit
+      correctnessRCHash
     );
 
     nContests++;

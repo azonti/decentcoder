@@ -58,6 +58,7 @@ contract Contest {
   uint public immutable createdBlockNumber;
   address public immutable organizer;
   uint public immutable organizerDeposit;
+  uint public immutable participantDeposit;
   uint public immutable timedrift;
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
@@ -65,10 +66,9 @@ contract Contest {
   uint public immutable peerreviewingPhaseFinishedAt;
   uint public immutable revisionPhaseFinishedAt;
   uint public immutable claimingPhaseFinishedAt;
+  uint public constant nReviewers = 3;
   bytes32 private immutable passphraseHash;
   bytes32 private immutable correctnessRCHash;
-
-  uint public immutable participantMinimumDeposit;
 
   mapping(address => uint) public submissionTimestamp;
   mapping(address => bytes32) private answerRCHashAddressHash;
@@ -76,20 +76,12 @@ contract Contest {
   ICorrectness public correctness;
 
   address[] private participants;
-
   uint[] private deposits;
-
   IAnswer[] private _answers; function answers() external view returns (IAnswer[] memory __answers) { __answers = _answers; }
-
   bool[][] private isAnswerCorrects;
-
   uint[] public isAnswerCorrectCount;
-
   mapping(address => uint) public index;
-
   uint public hash;
-
-  uint public constant nReviewers = 3;
 
   address public winner;
   event WinnerChanged(address winner);
@@ -97,6 +89,7 @@ contract Contest {
   constructor(
     address _organizer,
     uint _organizerDeposit,
+    uint _participantDeposit,
     uint _timedrift,
     uint _announcementPhaseFinishedAt,
     uint _submissionPhaseFinishedAt,
@@ -105,8 +98,7 @@ contract Contest {
     uint _revisionPhaseFinishedAt,
     uint _claimingPhaseFinishedAt,
     bytes32 _passphraseHash,
-    bytes32 _correctnessRCHash,
-    uint _participantMinimumDeposit
+    bytes32 _correctnessRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "IA");
     require(_submissionPhaseFinishedAt >= _announcementPhaseFinishedAt + _timedrift, "IA");
@@ -122,6 +114,7 @@ contract Contest {
     createdBlockNumber = block.number;
     organizer = _organizer;
     organizerDeposit = _organizerDeposit;
+    participantDeposit = _participantDeposit;
     timedrift = _timedrift;
     announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
     submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
@@ -131,8 +124,6 @@ contract Contest {
     claimingPhaseFinishedAt = _claimingPhaseFinishedAt;
     passphraseHash = _passphraseHash;
     correctnessRCHash = _correctnessRCHash;
-
-    participantMinimumDeposit = _participantMinimumDeposit;
 
     submissionTimestamp[_organizer] = type(uint).max;
 
@@ -194,23 +185,15 @@ contract Contest {
   onlyBefore(publicationPhaseFinishedAt)
   {
     require(index[msg.sender] == 0, "NA");
-
-    require(msg.value >= participantMinimumDeposit, "IV");
-
+    require(msg.value == participantDeposit, "IV");
     require(keccak256(abi.encodePacked(getRCHash(address(_answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "IA");
 
     participants.push(msg.sender);
-
     deposits.push(msg.value);
-
     _answers.push(_answer);
-
     isAnswerCorrects.push();
-
     isAnswerCorrectCount.push();
-
     index[msg.sender] = participants.length;
-
     hash = uint(blockhash(block.number - 1)) % participants.length;
   }
 
@@ -224,7 +207,6 @@ contract Contest {
   onlyBefore(peerreviewingPhaseFinishedAt)
   {
     require(_answers[_0index] != IAnswer(0), "IA");
-
     require(!ContestsLibrary.isRCPureAndStandalone(address(_answers[_0index]), m), "IA");
 
     _answers[_0index] = IAnswer(0);
@@ -246,7 +228,6 @@ contract Contest {
 
     for (uint i = 0; i < nReviewers; i++) {
       isAnswerCorrects[_0index].push(isAnswerCorrect[i]);
-
       if (isAnswerCorrect[i]) {
         isAnswerCorrectCount[((_0index + hash) % participants.length + i) % participants.length]++;
       }
@@ -292,11 +273,9 @@ contract Contest {
   onlyAfter(revisionPhaseFinishedAt)
   onlyBefore(claimingPhaseFinishedAt)
   {
-    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
-
     uint _0index = index[msg.sender] - 1;
+    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
     require(_answers[_0index] != IAnswer(0), "NA");
-
     require(isAnswerCorrectCount[_0index] > nReviewers / 2, "WA");
 
     winner = msg.sender;

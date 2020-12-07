@@ -21,7 +21,7 @@
           <label>Answer.json</label>
           <md-file id="answerJSONToPublish" required/>
         </md-field>
-        <md-button type="submit" :disabled="!participantMinimumDeposit || publishing">Publish</md-button>
+        <md-button type="submit" :disabled="!participantDeposit || publishing">Publish</md-button>
       </form>
     </div>
     <div v-else>
@@ -51,7 +51,7 @@ export default {
       peerreviewingPhaseFinishedAt: null,
       revisionPhaseFinishedAt: null,
       claimingPhaseFinishedAt: null,
-      participantMinimumDeposit: null,
+      participantDeposit: null,
       winner: '',
       encryptedContent: '',
       encryptedLocalCorrectnessCC: '',
@@ -127,7 +127,7 @@ export default {
         this.setPeerreviewingPhaseFinishedAt(),
         this.setRevisionPhaseFinishedAt(),
         this.setClaimingPhaseFinishedAt(),
-        this.setParticipantMinimumDeposit(),
+        this.setParticipantDeposit(),
         this.setWinner(),
         this.setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC()
       ])
@@ -171,8 +171,8 @@ export default {
     async setClaimingPhaseFinishedAt () {
       this.claimingPhaseFinishedAt = await this.contest.claimingPhaseFinishedAt()
     },
-    async setParticipantMinimumDeposit () {
-      this.participantMinimumDeposit = await this.contest.participantMinimumDeposit()
+    async setParticipantDeposit () {
+      this.participantDeposit = await this.contest.participantDeposit()
     },
     async setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
@@ -317,7 +317,7 @@ export default {
       Answer.setProvider(this.$web3.currentProvider)
       const answer = await Answer.new({ from: accounts[1] })
 
-      await Promise.all(accounts.slice(1).map(account => this.contest.publish(answer.address, { from: account, value: this.participantMinimumDeposit })))
+      await Promise.all(accounts.slice(1).map(account => this.contest.publish(answer.address, { from: account, value: this.participantDeposit })))
 
       this.publishing = false
     }
