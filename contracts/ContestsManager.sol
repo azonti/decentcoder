@@ -22,6 +22,7 @@ contract ContestsManager {
 
   function createAndPushNewContest(
     uint organizerDeposit,
+    uint timedrift,
     uint announcementPhaseFinishedAt,
     uint submissionPhaseFinishedAt,
     uint publicationPhaseFinishedAt,
@@ -36,6 +37,7 @@ contract ContestsManager {
     Contest newContest = new Contest{value: msg.value}(
       msg.sender,
       organizerDeposit,
+      timedrift,
       announcementPhaseFinishedAt,
       submissionPhaseFinishedAt,
       publicationPhaseFinishedAt,

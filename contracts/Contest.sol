@@ -55,30 +55,22 @@ contract Contest {
 
 
   ContestsManager private immutable contestsManager;
-
   uint public immutable createdBlockNumber;
-
   address public immutable organizer;
-
   uint public immutable organizerDeposit;
-
+  uint public immutable timedrift;
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
   uint public immutable publicationPhaseFinishedAt;
   uint public immutable peerreviewingPhaseFinishedAt;
   uint public immutable revisionPhaseFinishedAt;
   uint public immutable claimingPhaseFinishedAt;
-
-  uint public constant timedrift = 10 minutes;
-
   bytes32 private immutable passphraseHash;
-
   bytes32 private immutable correctnessRCHash;
 
   uint public immutable participantMinimumDeposit;
 
   mapping(address => uint) public submissionTimestamp;
-
   mapping(address => bytes32) private answerRCHashAddressHash;
 
   ICorrectness public correctness;
@@ -105,6 +97,7 @@ contract Contest {
   constructor(
     address _organizer,
     uint _organizerDeposit,
+    uint _timedrift,
     uint _announcementPhaseFinishedAt,
     uint _submissionPhaseFinishedAt,
     uint _publicationPhaseFinishedAt,
@@ -116,33 +109,27 @@ contract Contest {
     uint _participantMinimumDeposit
   ) payable {
     require(_organizerDeposit <= msg.value, "IA");
-
-    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "IA");
-    require(_submissionPhaseFinishedAt + timedrift <= _publicationPhaseFinishedAt, "IA");
-    require(_publicationPhaseFinishedAt <= _peerreviewingPhaseFinishedAt, "IA");
-    require(_peerreviewingPhaseFinishedAt <= _revisionPhaseFinishedAt, "IA");
-    require(_revisionPhaseFinishedAt <= _claimingPhaseFinishedAt, "IA");
+    require(_submissionPhaseFinishedAt >= _announcementPhaseFinishedAt + _timedrift, "IA");
+    require(_publicationPhaseFinishedAt >= _submissionPhaseFinishedAt + _timedrift, "IA");
+    require(_peerreviewingPhaseFinishedAt >= _publicationPhaseFinishedAt, "IA");
+    require(_revisionPhaseFinishedAt >= _peerreviewingPhaseFinishedAt, "IA");
+    require(_claimingPhaseFinishedAt >= _revisionPhaseFinishedAt, "IA");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
 
     contestsManager = ContestsManager(msg.sender);
-
     createdBlockNumber = block.number;
-
     organizer = _organizer;
-
     organizerDeposit = _organizerDeposit;
-
+    timedrift = _timedrift;
     announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
     submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
     publicationPhaseFinishedAt = _publicationPhaseFinishedAt;
     peerreviewingPhaseFinishedAt = _peerreviewingPhaseFinishedAt;
     revisionPhaseFinishedAt = _revisionPhaseFinishedAt;
     claimingPhaseFinishedAt = _claimingPhaseFinishedAt;
-
     passphraseHash = _passphraseHash;
-
     correctnessRCHash = _correctnessRCHash;
 
     participantMinimumDeposit = _participantMinimumDeposit;
@@ -178,7 +165,6 @@ contract Contest {
     require(msg.sender != organizer, "NA");
 
     submissionTimestamp[msg.sender] = block.timestamp;
-
     answerRCHashAddressHash[msg.sender] = _answerRCHashAddressHash;
   }
 

@@ -44,13 +44,13 @@ export default {
       blockTimestamp: 0,
       createdBlockNumber: 0,
       phase: null,
+      timedrift: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
       publicationPhaseFinishedAt: null,
       peerreviewingPhaseFinishedAt: null,
       revisionPhaseFinishedAt: null,
       claimingPhaseFinishedAt: null,
-      timedrift: null,
       participantMinimumDeposit: null,
       winner: '',
       encryptedContent: '',
@@ -65,13 +65,13 @@ export default {
       if (
         !this.blockTimestamp ||
         !this.phase ||
+        !this.timedrift ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
         !this.publicationPhaseFinishedAt ||
         !this.peerreviewingPhaseFinishedAt ||
         !this.revisionPhaseFinishedAt ||
-        !this.claimingPhaseFinishedAt ||
-        !this.timedrift
+        !this.claimingPhaseFinishedAt
       ) return ''
 
       if (this.phase.eq(this.$web3.utils.toBN(0))) {
@@ -120,13 +120,13 @@ export default {
       await Promise.all([
         this.setBlockTimestamp(),
         this.setPhase().then(this.setPassphrase),
+        this.setTimedrift(),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
         this.setPublicationPhaseFinishedAt(),
         this.setPeerreviewingPhaseFinishedAt(),
         this.setRevisionPhaseFinishedAt(),
         this.setClaimingPhaseFinishedAt(),
-        this.setTimedrift(),
         this.setParticipantMinimumDeposit(),
         this.setWinner(),
         this.setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC()
@@ -150,6 +150,9 @@ export default {
         this.phase = await this.contest.phase()
       }
     },
+    async setTimedrift () {
+      this.timedrift = await this.contest.timedrift()
+    },
     async setAnnouncementPhaseFinishedAt () {
       this.announcementPhaseFinishedAt = await this.contest.announcementPhaseFinishedAt()
     },
@@ -167,9 +170,6 @@ export default {
     },
     async setClaimingPhaseFinishedAt () {
       this.claimingPhaseFinishedAt = await this.contest.claimingPhaseFinishedAt()
-    },
-    async setTimedrift () {
-      this.timedrift = await this.contest.timedrift()
     },
     async setParticipantMinimumDeposit () {
       this.participantMinimumDeposit = await this.contest.participantMinimumDeposit()
