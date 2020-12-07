@@ -13,6 +13,10 @@
       <md-input type="number" step="0.000000000000000001" required v-model="prizeEther"/>
     </md-field>
     <md-field>
+      <label>Timedrift (in Second)</label>
+      <md-input type="number" step="1" required v-model="timedrift"/>
+    </md-field>
+    <md-field>
       <label>Announcement Phase Finished at</label>
       <md-input type="datetime-local" required v-model="announcementPhaseFinishedAtDTL"/>
     </md-field>
@@ -53,6 +57,7 @@ export default {
       name: '',
       organizerDepositEther: '',
       prizeEther: '',
+      timedrift: '',
       announcementPhaseFinishedAtDTL: '',
       submissionPhaseFinishedAtDTL: '',
       judgementPhaseFinishedAtDTL: '',
@@ -79,6 +84,7 @@ export default {
       ])
       const result = await this.contestsManager.createAndPushNewContest(
         this.$web3.utils.toWei(this.organizerDepositEther),
+        this.timedrift,
         this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
         this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
         this.$dayjs(this.judgementPhaseFinishedAtDTL).unix(),

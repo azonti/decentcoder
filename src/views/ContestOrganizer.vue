@@ -38,10 +38,10 @@ export default {
       blockTimestamp: 0,
       createdBlockNumber: 0,
       phase: null,
+      timedrift: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
       judgementPhaseFinishedAt: null,
-      timedrift: null,
       passphrase: '',
       startingSubmissionPhase: false,
       startingJudgementPhase: false
@@ -52,10 +52,10 @@ export default {
       if (
         !this.blockTimestamp ||
         !this.phase ||
+        !this.timedrift ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
-        !this.judgementPhaseFinishedAt ||
-        !this.timedrift
+        !this.judgementPhaseFinishedAt
       ) return ''
 
       if (this.phase.eq(this.$web3.utils.toBN(0))) {
@@ -92,10 +92,10 @@ export default {
       await Promise.all([
         this.setBlockTimestamp(),
         this.setPhase(),
+        this.setTimedrift(),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
         this.setJudgementPhaseFinishedAt(),
-        this.setTimedrift(),
         this.setPageName()
       ])
     },
@@ -117,6 +117,9 @@ export default {
         this.phase = await this.contest.phase()
       }
     },
+    async setTimedrift () {
+      this.timedrift = await this.contest.timedrift()
+    },
     async setAnnouncementPhaseFinishedAt () {
       this.announcementPhaseFinishedAt = await this.contest.announcementPhaseFinishedAt()
     },
@@ -125,9 +128,6 @@ export default {
     },
     async setJudgementPhaseFinishedAt () {
       this.judgementPhaseFinishedAt = await this.contest.judgementPhaseFinishedAt()
-    },
-    async setTimedrift () {
-      this.timedrift = await this.contest.timedrift()
     },
     async setPageName () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })

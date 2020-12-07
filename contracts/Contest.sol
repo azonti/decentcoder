@@ -55,25 +55,17 @@ contract Contest {
 
 
   ContestsManager private immutable contestsManager;
-
   uint public immutable createdBlockNumber;
-
   address public immutable organizer;
-
   uint public immutable organizerDeposit;
-
+  uint public immutable timedrift;
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
   uint public immutable judgementPhaseFinishedAt;
-
-  uint public constant timedrift = 10 minutes;
-
   bytes32 private immutable passphraseHash;
-
   bytes32 private immutable correctnessRCHash;
 
   mapping(address => uint) public submissionTimestamp;
-
   mapping(address => bytes32) private answerRCHashAddressHash;
 
   ICorrectness private correctness;
@@ -84,6 +76,7 @@ contract Contest {
   constructor(
     address _organizer,
     uint _organizerDeposit,
+    uint _timedrift,
     uint _announcementPhaseFinishedAt,
     uint _submissionPhaseFinishedAt,
     uint _judgementPhaseFinishedAt,
@@ -91,27 +84,21 @@ contract Contest {
     bytes32 _correctnessRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "IA");
-
-    require(_announcementPhaseFinishedAt + timedrift <= _submissionPhaseFinishedAt, "IA");
-    require(_submissionPhaseFinishedAt + timedrift <= _judgementPhaseFinishedAt, "IA");
+    require(_submissionPhaseFinishedAt >= _announcementPhaseFinishedAt + _timedrift, "IA");
+    require(_judgementPhaseFinishedAt >= _submissionPhaseFinishedAt + _timedrift, "IA");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
 
     contestsManager = ContestsManager(msg.sender);
-
     createdBlockNumber = block.number;
-
     organizer = _organizer;
-
     organizerDeposit = _organizerDeposit;
-
+    timedrift = _timedrift;
     announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
     submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
     judgementPhaseFinishedAt = _judgementPhaseFinishedAt;
-
     passphraseHash = _passphraseHash;
-
     correctnessRCHash = _correctnessRCHash;
 
     submissionTimestamp[_organizer] = type(uint).max;
@@ -145,7 +132,6 @@ contract Contest {
     require(msg.sender != organizer, "NA");
 
     submissionTimestamp[msg.sender] = block.timestamp;
-
     answerRCHashAddressHash[msg.sender] = _answerRCHashAddressHash;
   }
 
@@ -175,10 +161,8 @@ contract Contest {
   onlyBefore(judgementPhaseFinishedAt)
   {
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
-
     require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "IA");
     require(ContestsLibrary.isRCPureAndStandalone(address(answer)), "IA");
-
     require(ContestsLibrary.judge(correctness, answer), "WA");
 
     winner = msg.sender;
