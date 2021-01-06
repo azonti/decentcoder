@@ -41,7 +41,9 @@ export default {
       timedrift: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
+      prejudgementPhaseFinishedAt: null,
       judgementPhaseFinishedAt: null,
+      claimingPhaseFinishedAt: null,
       passphrase: '',
       startingSubmissionPhase: false,
       startingJudgementPhase: false
@@ -55,7 +57,9 @@ export default {
         !this.timedrift ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
-        !this.judgementPhaseFinishedAt
+        !this.prejudgementPhaseFinishedAt ||
+        !this.judgementPhaseFinishedAt ||
+        !this.claimingPhaseFinishedAt
       ) return ''
 
       if (this.phase.eq(this.$web3.utils.toBN(0))) {
@@ -68,7 +72,9 @@ export default {
         if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndJudgement'
         return 'abnormalTermination'
       }
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.prejudgementPhaseFinishedAt)) return 'prejudgement'
       if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.judgementPhaseFinishedAt)) return 'judgement'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimingPhaseFinishedAt)) return 'claiming'
       return 'normalTermination'
     }
   },
@@ -95,7 +101,9 @@ export default {
         this.setTimedrift(),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
+        this.setPrejudgementPhaseFinishedAt(),
         this.setJudgementPhaseFinishedAt(),
+        this.setClaimingPhaseFinishedAt(),
         this.setPageName()
       ])
     },
@@ -126,8 +134,14 @@ export default {
     async setSubmissionPhaseFinishedAt () {
       this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
     },
+    async setPrejudgementPhaseFinishedAt () {
+      this.prejudgementPhaseFinishedAt = await this.contest.prejudgementPhaseFinishedAt()
+    },
     async setJudgementPhaseFinishedAt () {
       this.judgementPhaseFinishedAt = await this.contest.judgementPhaseFinishedAt()
+    },
+    async setClaimingPhaseFinishedAt () {
+      this.claimingPhaseFinishedAt = await this.contest.claimingPhaseFinishedAt()
     },
     async setPageName () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
@@ -139,6 +153,7 @@ export default {
       this.startingSubmissionPhase = true
 
       const accounts = await this.$web3.eth.getAccounts()
+
       await this.contest.startSubmissionPhase(this.passphrase, { from: accounts[0] })
 
       this.startingSubmissionPhase = false

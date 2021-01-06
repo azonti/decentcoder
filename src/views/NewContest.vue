@@ -25,8 +25,16 @@
       <md-input type="datetime-local" required v-model="submissionPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
+      <label>Pre-judgement Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="prejudgementPhaseFinishedAtDTL"/>
+    </md-field>
+    <md-field>
       <label>Judgement Phase Finished at</label>
       <md-input type="datetime-local" required v-model="judgementPhaseFinishedAtDTL"/>
+    </md-field>
+    <md-field>
+      <label>Claiming Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="claimingPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
       <label>Content</label>
@@ -60,7 +68,9 @@ export default {
       timedrift: '',
       announcementPhaseFinishedAtDTL: '',
       submissionPhaseFinishedAtDTL: '',
+      prejudgementPhaseFinishedAtDTL: '',
       judgementPhaseFinishedAtDTL: '',
+      claimingPhaseFinishedAtDTL: '',
       content: '',
       passphrase: '',
       creating: false
@@ -85,9 +95,13 @@ export default {
       const result = await this.contestsManager.createAndPushNewContest(
         this.$web3.utils.toWei(this.organizerDepositEther),
         this.timedrift,
-        this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.judgementPhaseFinishedAtDTL).unix(),
+        [
+          this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.prejudgementPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.judgementPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.claimingPhaseFinishedAtDTL).unix()
+        ],
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
         correctnessRCHash,

@@ -23,9 +23,7 @@ contract ContestsManager {
   function createAndPushNewContest(
     uint organizerDeposit,
     uint timedrift,
-    uint announcementPhaseFinishedAt,
-    uint submissionPhaseFinishedAt,
-    uint judgementPhaseFinishedAt,
+    uint[] memory phaseFinishedAts,
     string calldata cid,
     bytes32 passphraseHash,
     bytes32 correctnessRCHash
@@ -34,9 +32,7 @@ contract ContestsManager {
       msg.sender,
       organizerDeposit,
       timedrift,
-      announcementPhaseFinishedAt,
-      submissionPhaseFinishedAt,
-      judgementPhaseFinishedAt,
+      phaseFinishedAts,
       passphraseHash,
       correctnessRCHash
     );

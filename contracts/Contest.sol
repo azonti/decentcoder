@@ -61,14 +61,18 @@ contract Contest {
   uint public immutable timedrift;
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
+  uint public immutable prejudgementPhaseFinishedAt;
   uint public immutable judgementPhaseFinishedAt;
+  uint public immutable claimingPhaseFinishedAt;
   bytes32 private immutable passphraseHash;
   bytes32 private immutable correctnessRCHash;
 
   mapping(address => uint) public submissionTimestamp;
   mapping(address => bytes32) private answerRCHashAddressHash;
 
-  ICorrectness private correctness;
+  ICorrectness public correctness; // private
+
+  mapping(address => bool) public isAnswerCorrect;
 
   address public winner;
   event WinnerChanged(address winner);
@@ -77,15 +81,16 @@ contract Contest {
     address _organizer,
     uint _organizerDeposit,
     uint _timedrift,
-    uint _announcementPhaseFinishedAt,
-    uint _submissionPhaseFinishedAt,
-    uint _judgementPhaseFinishedAt,
+    uint[] memory _phaseFinishedAts,
     bytes32 _passphraseHash,
     bytes32 _correctnessRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "IA");
-    require(_submissionPhaseFinishedAt >= _announcementPhaseFinishedAt + _timedrift, "IA");
-    require(_judgementPhaseFinishedAt >= _submissionPhaseFinishedAt + _timedrift, "IA");
+    require(_phaseFinishedAts.length == 5, "IA");
+    require(_phaseFinishedAts[1] >= _phaseFinishedAts[0] + _timedrift, "IA");
+    require(_phaseFinishedAts[2] >= _phaseFinishedAts[1] + _timedrift, "IA");
+    require(_phaseFinishedAts[3] >= _phaseFinishedAts[2], "IA");
+    require(_phaseFinishedAts[4] >= _phaseFinishedAts[3], "IA");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
@@ -95,9 +100,11 @@ contract Contest {
     organizer = _organizer;
     organizerDeposit = _organizerDeposit;
     timedrift = _timedrift;
-    announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
-    submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
-    judgementPhaseFinishedAt = _judgementPhaseFinishedAt;
+    announcementPhaseFinishedAt = _phaseFinishedAts[0];
+    submissionPhaseFinishedAt = _phaseFinishedAts[1];
+    prejudgementPhaseFinishedAt = _phaseFinishedAts[2];
+    judgementPhaseFinishedAt = _phaseFinishedAts[3];
+    claimingPhaseFinishedAt = _phaseFinishedAts[4];
     passphraseHash = _passphraseHash;
     correctnessRCHash = _correctnessRCHash;
 
@@ -145,7 +152,6 @@ contract Contest {
   onlyBefore(submissionPhaseFinishedAt + timedrift)
   {
     require(getRCHash(address(_correctness)) == correctnessRCHash, "IA");
-    require(ContestsLibrary.isRCPureAndStandalone(address(_correctness)), "IA");
 
     phase = Phase.Judgement;
     emit PhaseChanged(Phase.Judgement);
@@ -158,12 +164,24 @@ contract Contest {
   )
   external
   onlyDuring(Phase.Judgement)
+  onlyAfter(prejudgementPhaseFinishedAt)
   onlyBefore(judgementPhaseFinishedAt)
   {
-    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
     require(keccak256(abi.encodePacked(getRCHash(address(answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "IA");
-    require(ContestsLibrary.isRCPureAndStandalone(address(answer)), "IA");
+    require(ContestsLibrary.isRCPureAndStandalone2(address(answer)), "IA");
     require(ContestsLibrary.judge(correctness, answer), "WA");
+
+    isAnswerCorrect[msg.sender] = true;
+  }
+
+  function claim()
+  external
+  onlyDuring(Phase.Judgement)
+  onlyAfter(judgementPhaseFinishedAt)
+  onlyBefore(claimingPhaseFinishedAt)
+  {
+    require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
+    require(isAnswerCorrect[msg.sender], "NA");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);
@@ -172,7 +190,7 @@ contract Contest {
   function terminateNormally()
   external
   onlyDuring(Phase.Judgement)
-  onlyAfter(judgementPhaseFinishedAt)
+  onlyAfter(claimingPhaseFinishedAt)
   {
     contestsManager.removeMe();
 
@@ -181,7 +199,7 @@ contract Contest {
     selfdestruct(payable(winner));
   }
 
-  function terminateAbnormally()
+  function terminateAbnormally(uint m)
   external
   {
     require(
@@ -191,6 +209,10 @@ contract Contest {
       ) || (
         block.timestamp > submissionPhaseFinishedAt + timedrift &&
         phase == Phase.Submission
+      ) || (
+        phase == Phase.Judgement &&
+        block.timestamp <= prejudgementPhaseFinishedAt &&
+        !ContestsLibrary.isRCPureAndStandalone(address(correctness), m)
       )
     );
 

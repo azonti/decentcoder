@@ -47,7 +47,9 @@ export default {
       timedrift: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
+      prejudgementPhaseFinishedAt: null,
       judgementPhaseFinishedAt: null,
+      claimingPhaseFinishedAt: null,
       winner: '',
       encryptedContent: '',
       encryptedLocalCorrectnessCC: '',
@@ -64,7 +66,9 @@ export default {
         !this.timedrift ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
-        !this.judgementPhaseFinishedAt
+        !this.prejudgementPhaseFinishedAt ||
+        !this.judgementPhaseFinishedAt ||
+        !this.claimingPhaseFinishedAt
       ) return ''
 
       if (this.phase.eq(this.$web3.utils.toBN(0))) {
@@ -77,7 +81,9 @@ export default {
         if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndJudgement'
         return 'abnormalTermination'
       }
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.prejudgementPhaseFinishedAt)) return 'prejudgement'
       if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.judgementPhaseFinishedAt)) return 'judgement'
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.claimingPhaseFinishedAt)) return 'claiming'
       return 'normalTermination'
     },
     content () {
@@ -113,7 +119,9 @@ export default {
         this.setTimedrift(),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
+        this.setPrejudgementPhaseFinishedAt(),
         this.setJudgementPhaseFinishedAt(),
+        this.setClaimingPhaseFinishedAt(),
         this.setWinner(),
         this.setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC()
       ])
@@ -145,8 +153,21 @@ export default {
     async setSubmissionPhaseFinishedAt () {
       this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
     },
+    async setPrejudgementPhaseFinishedAt () {
+      this.prejudgementPhaseFinishedAt = await this.contest.prejudgementPhaseFinishedAt()
+    },
     async setJudgementPhaseFinishedAt () {
       this.judgementPhaseFinishedAt = await this.contest.judgementPhaseFinishedAt()
+    },
+    async setClaimingPhaseFinishedAt () {
+      this.claimingPhaseFinishedAt = await this.contest.claimingPhaseFinishedAt()
+    },
+    async setWinner (event) {
+      if (event) {
+        this.winner = event.returnValues.winner
+      } else {
+        this.winner = await this.contest.winner()
+      }
     },
     async setPageNameAndEncryptedContentAndEncryptedLocalCorrectnessCC () {
       const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
@@ -167,18 +188,11 @@ export default {
     async setEncryptedLocalCorrectnessCC (cid) {
       this.encryptedLocalCorrectnessCC = await this.ipfsCat(cid + '/encryptedLocalCorrectnessCC')
     },
-    async setWinner (event) {
-      if (event) {
-        this.winner = event.returnValues.winner
-      } else {
-        this.winner = await this.contest.winner()
-      }
-    },
     async setPassphrase () {
       if (this.phase.gte(this.$web3.utils.toBN(1)) && !this.passphrase) {
         const events = await this.contest.getPastEvents('PhaseChanged', { fromBlock: this.createdBlockNumber })
         const transaction = await this.$web3.eth.getTransaction(events.filter(event => event.returnValues.phase === '1')[0].transactionHash)
-        this.passphrase = this.$web3.eth.abi.decodeParameters(this.$Contest.abi[14].inputs, transaction.input.substring(10)).passphrase
+        this.passphrase = this.$web3.eth.abi.decodeParameters(this.$Contest.abi[18].inputs, transaction.input.substring(10)).passphrase
       }
     },
     async submit () {
