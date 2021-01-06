@@ -24,12 +24,7 @@ contract ContestsManager {
     uint organizerDeposit,
     uint participantDeposit,
     uint timedrift,
-    uint announcementPhaseFinishedAt,
-    uint submissionPhaseFinishedAt,
-    uint publicationPhaseFinishedAt,
-    uint peerreviewingPhaseFinishedAt,
-    uint revisionPhaseFinishedAt,
-    uint claimingPhaseFinishedAt,
+    uint[] memory phaseFinishedAts,
     string calldata cid,
     bytes32 passphraseHash,
     bytes32 correctnessRCHash
@@ -39,12 +34,7 @@ contract ContestsManager {
       organizerDeposit,
       participantDeposit,
       timedrift,
-      announcementPhaseFinishedAt,
-      submissionPhaseFinishedAt,
-      publicationPhaseFinishedAt,
-      peerreviewingPhaseFinishedAt,
-      revisionPhaseFinishedAt,
-      claimingPhaseFinishedAt,
+      phaseFinishedAts,
       passphraseHash,
       correctnessRCHash
     );

@@ -17,16 +17,38 @@ library ContestsLibrary {
     for(uint i = m; i < rcSize; i++) {
       if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
         i += uint8(rc[i]) - 0x5f;
-      } else if (maybeNonPureOrNonStandalone && (uint8(rc[i]) == 0x00 || uint8(rc[i]) == 0x56 || uint8(rc[i]) == 0x57 || uint8(rc[i]) == 0xf3)) {
+      } else if (maybeNonPureOrNonStandalone && (uint8(rc[i]) == 0x56 || uint8(rc[i]) == 0x57 || uint8(rc[i]) == 0xf3 || uint8(rc[i]) == 0xfd)) {
         return false;
-      } else if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a) {
+      } else if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a || uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
         maybeNonPureOrNonStandalone = true;
-      } else if (uint8(rc[i]) >= 0xa5 && uint8(rc[i]) <= 0xef) {
+      } else if (uint8(rc[i]) == 0x00 || (uint8(rc[i]) >= 0x21 && uint8(rc[i]) <= 0x2f) || uint8(rc[i]) == 0x56 || (uint8(rc[i]) >= 0xa5 && uint8(rc[i]) <= 0xef) || uint8(rc[i]) == 0xf3 || uint8(rc[i]) >= 0xfb) {
         return true;
-      } else if (uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
-        maybeNonPureOrNonStandalone = true;
-      } else if (uint8(rc[i]) >= 0xfb) {
-        return true;
+      }
+    }
+    return true;
+  }
+
+  function isRCPureAndStandalone2(address a) external view returns (bool) {
+    uint rcSize;
+    assembly { rcSize := extcodesize(a) }
+    bytes memory rc = new bytes(rcSize);
+    assembly { extcodecopy(a, add(rc, 0x20), 0, rcSize) }
+
+    bool maybeCode = true; bool maybeNonPureOrNonStandalone;
+    for(uint i = 0; i < rcSize; i++) {
+      if (uint8(rc[i]) >= 0x60 && uint8(rc[i]) <= 0x7f) {
+        i += uint8(rc[i]) - 0x5f;
+      } else if (maybeCode) {
+        if (maybeNonPureOrNonStandalone && (uint8(rc[i]) == 0x56 || uint8(rc[i]) == 0x57 || uint8(rc[i]) == 0xf3 || uint8(rc[i]) == 0xfd)) {
+          return false;
+        } else if ((uint8(rc[i]) >= 0x30 && uint8(rc[i]) <= 0x33) || (uint8(rc[i]) >= 0x3a && uint8(rc[i]) <= 0x3c) || (uint8(rc[i]) >= 0x3f && uint8(rc[i]) <= 0x45) || uint8(rc[i]) == 0x54 || uint8(rc[i]) == 0x5a || uint8(rc[i]) == 0xf1 || uint8(rc[i]) == 0xf2 || uint8(rc[i]) == 0xf4 || uint8(rc[i]) == 0xfa) {
+          maybeNonPureOrNonStandalone = true;
+        } else if (uint8(rc[i]) == 0x00 || (uint8(rc[i]) >= 0x21 && uint8(rc[i]) <= 0x2f) || uint8(rc[i]) == 0x56 || (uint8(rc[i]) >= 0xa5 && uint8(rc[i]) <= 0xef) || uint8(rc[i]) == 0xf3 || uint8(rc[i]) >= 0xfb) {
+          maybeNonPureOrNonStandalone = false;
+          maybeCode = false;
+        }
+      } else if (uint8(rc[i]) == 0x5b) {
+        maybeCode = true;
       }
     }
     return true;

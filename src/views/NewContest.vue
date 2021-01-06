@@ -29,6 +29,10 @@
       <md-input type="datetime-local" required v-model="submissionPhaseFinishedAtDTL"/>
     </md-field>
     <md-field>
+      <label>Pre-publication Phase Finished at</label>
+      <md-input type="datetime-local" required v-model="prepublicationPhaseFinishedAtDTL"/>
+    </md-field>
+    <md-field>
       <label>Publication Phase Finished at</label>
       <md-input type="datetime-local" required v-model="publicationPhaseFinishedAtDTL"/>
     </md-field>
@@ -72,17 +76,18 @@ export default {
       contestsManager: null,
       name: '',
       organizerDepositEther: '',
+      participantDepositEther: '',
       prizeEther: '',
       timedrift: '',
       announcementPhaseFinishedAtDTL: '',
       submissionPhaseFinishedAtDTL: '',
+      prepublicationPhaseFinishedAtDTL: '',
       publicationPhaseFinishedAtDTL: '',
       peerreviewingPhaseFinishedAtDTL: '',
       revisionPhaseFinishedAtDTL: '',
       claimingPhaseFinishedAtDTL: '',
       content: '',
       passphrase: '',
-      participantDepositEther: '',
       creating: false
     }
   },
@@ -106,12 +111,15 @@ export default {
         this.$web3.utils.toWei(this.organizerDepositEther),
         this.$web3.utils.toWei(this.participantDepositEther),
         this.timedrift,
-        this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.publicationPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.peerreviewingPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.revisionPhaseFinishedAtDTL).unix(),
-        this.$dayjs(this.claimingPhaseFinishedAtDTL).unix(),
+        [
+          this.$dayjs(this.announcementPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.submissionPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.prepublicationPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.publicationPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.peerreviewingPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.revisionPhaseFinishedAtDTL).unix(),
+          this.$dayjs(this.claimingPhaseFinishedAtDTL).unix()
+        ],
         cid,
         this.$web3.utils.soliditySha3(this.passphrase),
         correctnessRCHash,

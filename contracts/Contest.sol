@@ -62,6 +62,7 @@ contract Contest {
   uint public immutable timedrift;
   uint public immutable announcementPhaseFinishedAt;
   uint public immutable submissionPhaseFinishedAt;
+  uint public immutable prepublicationPhaseFinishedAt;
   uint public immutable publicationPhaseFinishedAt;
   uint public immutable peerreviewingPhaseFinishedAt;
   uint public immutable revisionPhaseFinishedAt;
@@ -91,21 +92,18 @@ contract Contest {
     uint _organizerDeposit,
     uint _participantDeposit,
     uint _timedrift,
-    uint _announcementPhaseFinishedAt,
-    uint _submissionPhaseFinishedAt,
-    uint _publicationPhaseFinishedAt,
-    uint _peerreviewingPhaseFinishedAt,
-    uint _revisionPhaseFinishedAt,
-    uint _claimingPhaseFinishedAt,
+    uint[] memory _phaseFinishedAts,
     bytes32 _passphraseHash,
     bytes32 _correctnessRCHash
   ) payable {
     require(_organizerDeposit <= msg.value, "IA");
-    require(_submissionPhaseFinishedAt >= _announcementPhaseFinishedAt + _timedrift, "IA");
-    require(_publicationPhaseFinishedAt >= _submissionPhaseFinishedAt + _timedrift, "IA");
-    require(_peerreviewingPhaseFinishedAt >= _publicationPhaseFinishedAt, "IA");
-    require(_revisionPhaseFinishedAt >= _peerreviewingPhaseFinishedAt, "IA");
-    require(_claimingPhaseFinishedAt >= _revisionPhaseFinishedAt, "IA");
+    require(_phaseFinishedAts.length == 7, "IA");
+    require(_phaseFinishedAts[1] >= _phaseFinishedAts[0] + _timedrift, "IA");
+    require(_phaseFinishedAts[2] >= _phaseFinishedAts[1] + _timedrift, "IA");
+    require(_phaseFinishedAts[3] >= _phaseFinishedAts[2], "IA");
+    require(_phaseFinishedAts[4] >= _phaseFinishedAts[3], "IA");
+    require(_phaseFinishedAts[5] >= _phaseFinishedAts[4], "IA");
+    require(_phaseFinishedAts[6] >= _phaseFinishedAts[5], "IA");
 
     phase = Phase.Announcement;
     emit PhaseChanged(Phase.Announcement);
@@ -116,12 +114,13 @@ contract Contest {
     organizerDeposit = _organizerDeposit;
     participantDeposit = _participantDeposit;
     timedrift = _timedrift;
-    announcementPhaseFinishedAt = _announcementPhaseFinishedAt;
-    submissionPhaseFinishedAt = _submissionPhaseFinishedAt;
-    publicationPhaseFinishedAt = _publicationPhaseFinishedAt;
-    peerreviewingPhaseFinishedAt = _peerreviewingPhaseFinishedAt;
-    revisionPhaseFinishedAt = _revisionPhaseFinishedAt;
-    claimingPhaseFinishedAt = _claimingPhaseFinishedAt;
+    announcementPhaseFinishedAt = _phaseFinishedAts[0];
+    submissionPhaseFinishedAt = _phaseFinishedAts[1];
+    prepublicationPhaseFinishedAt = _phaseFinishedAts[2];
+    publicationPhaseFinishedAt = _phaseFinishedAts[3];
+    peerreviewingPhaseFinishedAt = _phaseFinishedAts[4];
+    revisionPhaseFinishedAt = _phaseFinishedAts[5];
+    claimingPhaseFinishedAt = _phaseFinishedAts[6];
     passphraseHash = _passphraseHash;
     correctnessRCHash = _correctnessRCHash;
 
@@ -182,11 +181,13 @@ contract Contest {
   payable
   external
   onlyDuring(Phase.Publication)
+  onlyAfter(prepublicationPhaseFinishedAt)
   onlyBefore(publicationPhaseFinishedAt)
   {
     require(index[msg.sender] == 0, "NA");
     require(msg.value == participantDeposit, "IV");
     require(keccak256(abi.encodePacked(getRCHash(address(_answer)), msg.sender)) == answerRCHashAddressHash[msg.sender], "IA");
+    require(ContestsLibrary.isRCPureAndStandalone2(address(_answer)), "IA");
 
     participants.push(msg.sender);
     deposits.push(msg.value);
@@ -195,24 +196,6 @@ contract Contest {
     isAnswerCorrectCount.push();
     index[msg.sender] = participants.length;
     hash = uint(blockhash(block.number - 1)) % participants.length;
-  }
-
-  function punish(
-    uint _0index,
-    uint m
-  )
-  external
-  onlyDuring(Phase.Publication)
-  onlyAfter(publicationPhaseFinishedAt)
-  onlyBefore(peerreviewingPhaseFinishedAt)
-  {
-    require(_answers[_0index] != IAnswer(0), "IA");
-    require(!ContestsLibrary.isRCPureAndStandalone(address(_answers[_0index]), m), "IA");
-
-    _answers[_0index] = IAnswer(0);
-
-    msg.sender.transfer(deposits[_0index]);
-    deposits[_0index] = 0;
   }
 
   function peerreview(
@@ -242,8 +225,6 @@ contract Contest {
   onlyAfter(peerreviewingPhaseFinishedAt)
   onlyBefore(revisionPhaseFinishedAt)
   {
-    require(_answers[_0index] != IAnswer(0), "IA");
-
     bool isParticipantAnswerCorrect;
     try ContestsLibrary.judge(correctness, _answers[_0index]) returns (bool _isParticipantAnswerCorrect) {
       isParticipantAnswerCorrect = _isParticipantAnswerCorrect;
@@ -273,10 +254,9 @@ contract Contest {
   onlyAfter(revisionPhaseFinishedAt)
   onlyBefore(claimingPhaseFinishedAt)
   {
-    uint _0index = index[msg.sender] - 1;
     require(submissionTimestamp[msg.sender] < submissionTimestamp[winner], "NA");
-    require(_answers[_0index] != IAnswer(0), "NA");
-    require(isAnswerCorrectCount[_0index] > nReviewers / 2, "WA");
+    uint _0index = index[msg.sender] - 1;
+    require(isAnswerCorrectCount[_0index] > nReviewers / 2, "NA");
 
     winner = msg.sender;
     emit WinnerChanged(msg.sender);
@@ -310,7 +290,7 @@ contract Contest {
         phase == Phase.Submission
       ) || (
         phase == Phase.Publication &&
-        block.timestamp <= peerreviewingPhaseFinishedAt &&
+        block.timestamp <= prepublicationPhaseFinishedAt &&
         !ContestsLibrary.isRCPureAndStandalone(address(correctness), m)
       )
     );
@@ -318,10 +298,6 @@ contract Contest {
     contestsManager.removeMe();
 
     msg.sender.transfer(organizerDeposit);
-
-    for (uint i = 0; i < participants.length; i++) {
-      payable(participants[i]).transfer(deposits[i]);
-    }
 
     selfdestruct(payable(winner));
   }

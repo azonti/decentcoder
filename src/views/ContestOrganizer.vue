@@ -41,6 +41,7 @@ export default {
       timedrift: null,
       announcementPhaseFinishedAt: null,
       submissionPhaseFinishedAt: null,
+      prepublicationPhaseFinishedAt: null,
       publicationPhaseFinishedAt: null,
       peerreviewingPhaseFinishedAt: null,
       revisionPhaseFinishedAt: null,
@@ -58,6 +59,7 @@ export default {
         !this.timedrift ||
         !this.announcementPhaseFinishedAt ||
         !this.submissionPhaseFinishedAt ||
+        !this.prepublicationPhaseFinishedAt ||
         !this.publicationPhaseFinishedAt ||
         !this.peerreviewingPhaseFinishedAt ||
         !this.revisionPhaseFinishedAt ||
@@ -74,6 +76,7 @@ export default {
         if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.submissionPhaseFinishedAt.add(this.timedrift))) return 'betweenSubmissionAndPublication'
         return 'abnormalTermination'
       }
+      if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.prepublicationPhaseFinishedAt)) return 'prepublication'
       if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.publicationPhaseFinishedAt)) return 'publication'
       if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.peerreviewingPhaseFinishedAt)) return 'peerreviewing'
       if (this.$web3.utils.toBN(this.blockTimestamp).lte(this.revisionPhaseFinishedAt)) return 'revision'
@@ -104,6 +107,7 @@ export default {
         this.setTimedrift(),
         this.setAnnouncementPhaseFinishedAt(),
         this.setSubmissionPhaseFinishedAt(),
+        this.setPrepublicationPhaseFinishedAt(),
         this.setPublicationPhaseFinishedAt(),
         this.setPeerreviewingPhaseFinishedAt(),
         this.setRevisionPhaseFinishedAt(),
@@ -137,6 +141,9 @@ export default {
     },
     async setSubmissionPhaseFinishedAt () {
       this.submissionPhaseFinishedAt = await this.contest.submissionPhaseFinishedAt()
+    },
+    async setPrepublicationPhaseFinishedAt () {
+      this.prepublicationPhaseFinishedAt = await this.contest.prepublicationPhaseFinishedAt()
     },
     async setPublicationPhaseFinishedAt () {
       this.publicationPhaseFinishedAt = await this.contest.publicationPhaseFinishedAt()
