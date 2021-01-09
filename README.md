@@ -32,7 +32,7 @@ Run `truffle test`
 
 ### Customize configuration
 
-See [Configuration Reference](https://www.trufflesuite.com/docs/truffle/reference/configuration).
+See [Configuration Reference](https://www.trufflesuite.com/docs/truffle/reference/configuration)
 
 ## Frontend (Vue project)
 
@@ -56,4 +56,4 @@ Run `npm run lint`
 
 ### Customize configuration
 
-See [Configuration Reference](https://cli.vuejs.org/config/).
+See [Configuration Reference](https://cli.vuejs.org/config/)
