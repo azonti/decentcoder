@@ -6,7 +6,7 @@ It is still under development and has not yet been deployed on mainnet or testne
 
 ## Requirement
 
-+ [Truffle](https://github.com/trufflesuite/truffle)
++ [Truffle](https://github.com/trufflesuite/truffle) to compile, deploy, and test contracts
 + [Ganache](https://github.com/trufflesuite/ganache) to run a private network for development
 
 ## Backend (Truffle project)
